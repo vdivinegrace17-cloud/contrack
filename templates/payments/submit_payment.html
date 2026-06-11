@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Submit Payment — ConTrack{% endblock %}
+
+{% block main %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/merchant_sidebar.html' %}
+  <div class="ct-dashboard-main">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <a href="{% url 'merchant:reservations' %}" class="text-muted text-decoration-none" style="font-size:0.875rem;">← My Reservations</a>
+    </div>
+    <div class="ct-card" style="max-width:560px;">
+      <h5 class="fw-bold mb-1">Submit Payment</h5>
+      <p class="text-muted mb-3" style="font-size:0.875rem;">
+        For: <strong>{{ application.event.title }}</strong> — Booth {{ application.booth.booth_number }}
+      </p>
+      <p class="text-muted" style="font-size:0.875rem;">Payment submission form coming soon.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Pending Payments — ConTrack{% endblock %}
+
+{% block main %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/organizer_sidebar.html' %}
+  <div class="ct-dashboard-main">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <a href="{% url 'organizer:payment_list' %}" class="text-muted text-decoration-none" style="font-size:0.875rem;">← Payments</a>
+      <span class="text-muted">/</span>
+      <h4 class="fw-bold mb-0" style="color:var(--ct-purple-dark);">Pending Payments</h4>
+    </div>
+    <div class="ct-card">
+      {% if payments %}
+      <table class="ct-table table table-sm mb-0">
+        <thead>
+          <tr><th>Merchant</th><th>Booth</th><th>Amount</th><th>Submitted</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for p in payments %}
+          <tr>
+            <td>{{ p.application.merchant.username }}</td>
+            <td>{{ p.application.booth.display_name }}</td>
+            <td>₱{{ p.amount_declared }}</td>
+            <td>{{ p.submitted_at|date:"M d, Y" }}</td>
+            <td>
+              <a href="{% url 'organizer:verify_payment' p.pk %}" class="btn btn-sm btn-outline-success me-1">Verify</a>
+              <a href="{% url 'organizer:reject_payment' p.pk %}" class="btn btn-sm btn-outline-danger">Reject</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-muted mb-0">No pending payments.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

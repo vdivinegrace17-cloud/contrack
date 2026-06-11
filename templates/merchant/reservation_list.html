@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}My Reservations — ConTrack{% endblock %}
+
+{% block main %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/merchant_sidebar.html' %}
+
+  <div class="ct-dashboard-main">
+    <h4 class="fw-bold mb-3" style="color:var(--ct-purple-dark);">My Reservations</h4>
+
+    {% if applications %}
+    <div class="d-flex flex-column gap-3">
+      {% for app in applications %}
+      <div class="ct-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="fw-bold" style="font-size:1rem;">{{ app.event.title }}</div>
+            <div class="text-muted" style="font-size:0.875rem;">
+              Booth {{ app.booth.booth_number }}
+              {% if app.booth.label %} — {{ app.booth.label }}{% endif %}
+              · Applied {{ app.applied_at|date:"M d, Y" }}
+            </div>
+          </div>
+          <span class="ct-badge ct-badge-{{ app.status|lower }} ms-2">{{ app.get_status_display }}</span>
+        </div>
+        <div class="mt-2 d-flex gap-2">
+          <a href="{% url 'merchant:application_detail' app.pk %}" class="btn btn-sm btn-outline-secondary">View Details</a>
+          {% if app.status == 'PENDING' %}
+          <a href="{% url 'merchant:cancel_application' app.pk %}" class="btn btn-sm btn-outline-danger">Cancel</a>
+          {% endif %}
+          {% if app.status == 'APPROVED' %}
+          <a href="{% url 'merchant:submit_payment' app.pk %}" class="btn btn-sm btn-ct-yellow">Submit Payment</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="ct-card text-center py-4">
+      <p class="text-muted mb-2">You haven't applied for any booths yet.</p>
+      <a href="{% url 'merchant:event_list' %}" class="btn btn-ct-yellow">Browse Events →</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

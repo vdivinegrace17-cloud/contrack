@@ -1,0 +1,7 @@
+Django>=4.2,<5.0
+Pillow>=10.0.0          # Image handling for floor plans & proof of payment uploads
+django-environ>=0.11.0  # Clean .env file support
+django-crispy-forms>=2.1 # Nicer form rendering with minimal template code
+crispy-bootstrap5>=0.7  # Bootstrap 5 theme for crispy-forms
+whitenoise>=6.6.0       # Serve static files without a separate web server
+django-extensions>=3.2  # Handy management commands for development

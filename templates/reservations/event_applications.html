@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}{{ event.title }} — Reservations{% endblock %}
+
+{% block main %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/organizer_sidebar.html' %}
+  <div class="ct-dashboard-main">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <a href="{% url 'organizer:reservation_list' %}" class="text-muted text-decoration-none" style="font-size:0.875rem;">← Reservations</a>
+      <span class="text-muted">/</span>
+      <h4 class="fw-bold mb-0" style="color:var(--ct-purple-dark);">{{ event.title }}</h4>
+    </div>
+
+    <div class="ct-card">
+      {% if applications %}
+      <table class="ct-table table table-sm mb-0">
+        <thead>
+          <tr><th>Merchant</th><th>Booth</th><th>Applied</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for app in applications %}
+          <tr>
+            <td>{{ app.merchant.username }}</td>
+            <td>{{ app.booth.display_name }}</td>
+            <td>{{ app.applied_at|date:"M d, Y" }}</td>
+            <td><span class="ct-badge ct-badge-{{ app.status|lower }}">{{ app.get_status_display }}</span></td>
+            <td>
+              {% if app.status == 'PENDING' %}
+              <a href="{% url 'organizer:approve_application' app.pk %}" class="btn btn-sm btn-outline-success me-1">Approve</a>
+              <a href="{% url 'organizer:reject_application' app.pk %}" class="btn btn-sm btn-outline-danger me-1">Reject</a>
+              <a href="{% url 'organizer:waitlist_application' app.pk %}" class="btn btn-sm btn-outline-secondary">Waitlist</a>
+              {% else %}
+              <a href="{% url 'organizer:application_detail' app.pk %}" class="btn btn-sm btn-outline-secondary">View</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-muted mb-0">No reservations for this event.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

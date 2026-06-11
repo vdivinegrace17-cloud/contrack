@@ -1,0 +1,52 @@
+{% load static %}
+<nav class="ct-sidebar d-flex flex-column">
+  <a class="sidebar-brand" href="{% url 'organizer:dashboard' %}">
+    <span style="color:var(--ct-yellow)">C</span>onTrack <span style="font-weight:400;font-size:0.8rem;opacity:0.75;">Organizer</span>
+  </a>
+
+  {% with view_name=request.resolver_match.view_name %}
+
+  <a href="{% url 'organizer:dashboard' %}"
+     class="{% if view_name == 'organizer:dashboard' %}active{% endif %}">
+    <i class="bi bi-speedometer2 me-2"></i>Dashboard
+  </a>
+
+  <a href="{% url 'organizer:event_list' %}"
+     class="{% if 'event' in view_name %}active{% endif %}">
+    <i class="bi bi-calendar-event me-2"></i>Events
+  </a>
+
+  <a href="{% url 'organizer:reservation_list' %}"
+     class="{% if 'reservation' in view_name or 'application' in view_name %}active{% endif %}">
+    <i class="bi bi-clipboard-check me-2"></i>Reservations
+  </a>
+
+  <a href="{% url 'organizer:payment_list' %}"
+     class="{% if 'payment' in view_name %}active{% endif %}">
+    <i class="bi bi-credit-card me-2"></i>Payments
+  </a>
+
+  <a href="{% url 'organizer:merchant_list' %}"
+     class="{% if 'merchant' in view_name %}active{% endif %}">
+    <i class="bi bi-people me-2"></i>Merchants
+  </a>
+
+  <a href="{% url 'notifications:inbox' %}"
+     class="{% if 'notifications' in view_name %}active{% endif %}">
+    <i class="bi bi-bell me-2"></i>Notifications
+    {% if unread_count %}<span class="badge bg-danger ms-1" style="font-size:0.65rem;">{{ unread_count }}</span>{% endif %}
+  </a>
+
+  <div class="sidebar-divider"></div>
+
+  <a href="{% url 'organizer:profile' %}"
+     class="{% if view_name == 'organizer:profile' %}active{% endif %}">
+    <i class="bi bi-person me-2"></i>Profile
+  </a>
+
+  <a href="{% url 'accounts:logout' %}">
+    <i class="bi bi-box-arrow-right me-2"></i>Logout
+  </a>
+
+  {% endwith %}
+</nav>

@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile — ConTrack{% endblock %}
+
+{% block main %}
+{% if user.is_organizer %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/organizer_sidebar.html' %}
+  <div class="ct-dashboard-main">
+    <h4 class="fw-bold mb-3" style="color:var(--ct-purple-dark);">My Profile</h4>
+    <div class="ct-card" style="max-width:480px;">
+      <dl class="row mb-0" style="font-size:0.95rem;">
+        <dt class="col-sm-4 text-muted">Username</dt>
+        <dd class="col-sm-8 fw-semibold">{{ user.username }}</dd>
+
+        <dt class="col-sm-4 text-muted">Email</dt>
+        <dd class="col-sm-8">{{ user.email|default:"—" }}</dd>
+
+        <dt class="col-sm-4 text-muted">Role</dt>
+        <dd class="col-sm-8">
+          <span class="ct-badge" style="background:var(--ct-purple);color:#fff;">
+            {{ user.get_role_display }}
+          </span>
+        </dd>
+
+        <dt class="col-sm-4 text-muted">Joined</dt>
+        <dd class="col-sm-8">{{ user.date_joined|date:"F j, Y" }}</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/merchant_sidebar.html' %}
+  <div class="ct-dashboard-main">
+    <h4 class="fw-bold mb-3" style="color:var(--ct-purple-dark);">My Profile</h4>
+    <div class="ct-card" style="max-width:480px;">
+      <dl class="row mb-0" style="font-size:0.95rem;">
+        <dt class="col-sm-4 text-muted">Username</dt>
+        <dd class="col-sm-8 fw-semibold">{{ user.username }}</dd>
+
+        <dt class="col-sm-4 text-muted">Name</dt>
+        <dd class="col-sm-8">{{ user.first_name|default:"—" }}</dd>
+
+        <dt class="col-sm-4 text-muted">Email</dt>
+        <dd class="col-sm-8">{{ user.email|default:"—" }}</dd>
+
+        <dt class="col-sm-4 text-muted">Role</dt>
+        <dd class="col-sm-8">
+          <span class="ct-badge" style="background:var(--ct-yellow);color:var(--ct-text);">
+            {{ user.get_role_display }}
+          </span>
+        </dd>
+
+        <dt class="col-sm-4 text-muted">Joined</dt>
+        <dd class="col-sm-8">{{ user.date_joined|date:"F j, Y" }}</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

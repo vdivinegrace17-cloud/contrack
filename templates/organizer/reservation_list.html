@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Reservations — ConTrack Organizer{% endblock %}
+
+{% block main %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/organizer_sidebar.html' %}
+
+  <div class="ct-dashboard-main">
+    <h4 class="fw-bold mb-3" style="color:var(--ct-purple-dark);">Reservations</h4>
+
+    <form method="get" class="d-flex gap-2 mb-3 flex-wrap">
+      <select name="status" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+        <option value="">All Statuses</option>
+        {% for val, label in status_choices %}
+        <option value="{{ val }}" {% if status == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <div class="d-flex gap-1">
+        <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Merchant or event…" style="width:200px;">
+        <button type="submit" class="btn btn-ct-purple btn-sm">Search</button>
+        {% if status or q %}<a href="{% url 'organizer:reservation_list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>{% endif %}
+      </div>
+    </form>
+
+    <div class="ct-card">
+      {% if applications %}
+      <table class="ct-table table table-sm mb-0">
+        <thead>
+          <tr>
+            <th>Merchant</th>
+            <th>Event</th>
+            <th>Booth</th>
+            <th>Applied</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for app in applications %}
+          <tr>
+            <td>{{ app.merchant.username }}</td>
+            <td>{{ app.event.title|truncatechars:30 }}</td>
+            <td>{{ app.booth.display_name }}</td>
+            <td>{{ app.applied_at|date:"M d, Y" }}</td>
+            <td><span class="ct-badge ct-badge-{{ app.status|lower }}">{{ app.get_status_display }}</span></td>
+            <td>
+              {% if app.status == 'PENDING' %}
+              <a href="{% url 'organizer:approve_application' app.pk %}" class="btn btn-sm btn-outline-success me-1">Approve</a>
+              <a href="{% url 'organizer:reject_application' app.pk %}" class="btn btn-sm btn-outline-danger">Reject</a>
+              {% else %}
+              <a href="{% url 'organizer:application_detail' app.pk %}" class="btn btn-sm btn-outline-secondary">View</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-muted mb-0">No reservations found.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

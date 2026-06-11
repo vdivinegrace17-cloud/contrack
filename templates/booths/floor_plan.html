@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Floor Plan — {{ event.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  #map-container { position: relative; width: 100%; background: #f5f5f5; border-radius: 10px; overflow: hidden; }
+  #floor-map { height: 520px; }
+</style>
+{% endblock %}
+
+{% block main %}
+{% if user.is_organizer %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/organizer_sidebar.html' %}
+  <div class="ct-dashboard-main">
+{% else %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/merchant_sidebar.html' %}
+  <div class="ct-dashboard-main">
+{% endif %}
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <a href="{% url 'merchant:event_detail' event.slug %}" class="text-muted text-decoration-none" style="font-size:0.875rem;">← {{ event.title }}</a>
+      <span class="text-muted">/</span>
+      <h4 class="fw-bold mb-0" style="color:var(--ct-purple-dark);">Floor Plan</h4>
+    </div>
+
+    <div class="ct-card">
+      <div id="map-container">
+        <div id="floor-map"></div>
+      </div>
+      <div class="mt-2 d-flex gap-3 flex-wrap" style="font-size:0.8rem;color:#666;">
+        <span><span style="display:inline-block;width:12px;height:12px;background:#28a745;border-radius:50%;"></span> Available</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#ffc107;border-radius:50%;"></span> Pending</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#dc3545;border-radius:50%;"></span> Reserved</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#6c757d;border-radius:50%;"></span> Unavailable</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const FLOOR_PLAN_URL = "{{ floor_plan.image.url }}";
+const FLOOR_WIDTH    = {{ floor_plan.natural_width }};
+const FLOOR_HEIGHT   = {{ floor_plan.natural_height }};
+const BOOTHS_DATA    = {{ booths_json|safe }};
+const IS_ORGANIZER   = {{ user.is_organizer|yesno:"true,false" }};
+const APPLY_URL_TPL  = "{% url 'merchant:apply' 0 %}".replace('/0/', '/BOOTH_ID/');
+</script>
+{% load static %}
+<script src="{% static 'js/floorplan.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Payment Detail — ConTrack{% endblock %}
+
+{% block main %}
+{% if user.is_organizer %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/organizer_sidebar.html' %}
+  <div class="ct-dashboard-main">
+{% else %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/merchant_sidebar.html' %}
+  <div class="ct-dashboard-main">
+{% endif %}
+    <div class="ct-card" style="max-width:560px;">
+      <h5 class="fw-bold mb-3">Payment Details</h5>
+      <dl class="row mb-0" style="font-size:0.95rem;">
+        <dt class="col-sm-4 text-muted">Merchant</dt>
+        <dd class="col-sm-8">{{ payment.application.merchant.username }}</dd>
+        <dt class="col-sm-4 text-muted">Event</dt>
+        <dd class="col-sm-8">{{ payment.application.event.title }}</dd>
+        <dt class="col-sm-4 text-muted">Booth</dt>
+        <dd class="col-sm-8">{{ payment.application.booth.display_name }}</dd>
+        <dt class="col-sm-4 text-muted">Amount</dt>
+        <dd class="col-sm-8">₱{{ payment.amount_declared }}</dd>
+        <dt class="col-sm-4 text-muted">Method</dt>
+        <dd class="col-sm-8">{{ payment.payment_method }}</dd>
+        <dt class="col-sm-4 text-muted">Reference</dt>
+        <dd class="col-sm-8">{{ payment.reference_number }}</dd>
+        <dt class="col-sm-4 text-muted">Status</dt>
+        <dd class="col-sm-8">
+          <span class="ct-badge ct-badge-{{ payment.status|lower }}">{{ payment.get_status_display }}</span>
+        </dd>
+        <dt class="col-sm-4 text-muted">Submitted</dt>
+        <dd class="col-sm-8">{{ payment.submitted_at|date:"F j, Y, g:i A" }}</dd>
+      </dl>
+      {% if payment.proof_image %}
+      <div class="mt-3">
+        <label class="form-label text-muted" style="font-size:0.875rem;">Proof of Payment</label><br>
+        <a href="{{ payment.proof_image.url }}" target="_blank">
+          <img src="{{ payment.proof_image.url }}" alt="Payment proof" style="max-width:100%;max-height:300px;border-radius:8px;border:1px solid #ddd;">
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

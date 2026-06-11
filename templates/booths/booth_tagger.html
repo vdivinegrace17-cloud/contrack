@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Booth Tagger — {{ event.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  #map-container { position: relative; width: 100%; }
+  #floor-map { height: 560px; background:#f5f5f5; border-radius:10px; }
+</style>
+{% endblock %}
+
+{% block main %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/organizer_sidebar.html' %}
+  <div class="ct-dashboard-main">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <a href="{% url 'organizer:event_list' %}" class="text-muted text-decoration-none" style="font-size:0.875rem;">← Events</a>
+      <span class="text-muted">/</span>
+      <h4 class="fw-bold mb-0" style="color:var(--ct-purple-dark);">Booth Tagger — {{ event.title }}</h4>
+    </div>
+    <div class="ct-card">
+      <div id="floor-map"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const FLOOR_PLAN_URL = "{{ floor_plan.image.url }}";
+const FLOOR_WIDTH    = {{ floor_plan.natural_width }};
+const FLOOR_HEIGHT   = {{ floor_plan.natural_height }};
+const BOOTHS_DATA    = {{ booths_json|safe }};
+const SAVE_URL       = "{% url 'organizer:save_booth' event.slug %}";
+const DELETE_URL_TPL = "{% url 'organizer:delete_booth' 0 %}".replace('/0/', '/BOOTH_ID/');
+const CSRF_TOKEN     = "{{ csrf_token }}";
+</script>
+{% load static %}
+<script src="{% static 'js/floorplan.js' %}"></script>
+{% endblock %}

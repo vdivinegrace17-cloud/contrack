@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Reservation Detail — ConTrack{% endblock %}
+
+{% block main %}
+{% if user.is_organizer %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/organizer_sidebar.html' %}
+  <div class="ct-dashboard-main">
+{% else %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/merchant_sidebar.html' %}
+  <div class="ct-dashboard-main">
+{% endif %}
+    <div class="d-flex align-items-center gap-2 mb-3">
+      {% if user.is_organizer %}
+      <a href="{% url 'organizer:reservation_list' %}" class="text-muted text-decoration-none" style="font-size:0.875rem;">← Reservations</a>
+      {% else %}
+      <a href="{% url 'merchant:reservations' %}" class="text-muted text-decoration-none" style="font-size:0.875rem;">← My Reservations</a>
+      {% endif %}
+    </div>
+
+    <div class="ct-card" style="max-width:600px;">
+      <h5 class="fw-bold mb-3">Reservation Details</h5>
+      <dl class="row mb-0" style="font-size:0.95rem;">
+        <dt class="col-sm-4 text-muted">Merchant</dt>
+        <dd class="col-sm-8">{{ application.merchant.username }}</dd>
+
+        <dt class="col-sm-4 text-muted">Event</dt>
+        <dd class="col-sm-8">{{ application.event.title }}</dd>
+
+        <dt class="col-sm-4 text-muted">Booth</dt>
+        <dd class="col-sm-8">{{ application.booth.display_name }}</dd>
+
+        <dt class="col-sm-4 text-muted">Business Name</dt>
+        <dd class="col-sm-8">{{ application.business_name|default:"—" }}</dd>
+
+        <dt class="col-sm-4 text-muted">Products</dt>
+        <dd class="col-sm-8">{{ application.product_description|default:"—" }}</dd>
+
+        <dt class="col-sm-4 text-muted">Special Requests</dt>
+        <dd class="col-sm-8">{{ application.special_requests|default:"—" }}</dd>
+
+        <dt class="col-sm-4 text-muted">Status</dt>
+        <dd class="col-sm-8">
+          <span class="ct-badge ct-badge-{{ application.status|lower }}">{{ application.get_status_display }}</span>
+        </dd>
+
+        <dt class="col-sm-4 text-muted">Applied</dt>
+        <dd class="col-sm-8">{{ application.applied_at|date:"F j, Y, g:i A" }}</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+{% endblock %}

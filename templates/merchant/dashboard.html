@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — ConTrack{% endblock %}
+
+{% block main %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/merchant_sidebar.html' %}
+
+  <div class="ct-dashboard-main">
+    <div class="ct-welcome-banner mb-3">
+      Welcome back, <strong>{{ user.first_name|default:user.username }}</strong>! 👋
+    </div>
+
+    <div class="row g-3">
+      <!-- My Active Reservations -->
+      <div class="col-md-6">
+        <div class="ct-card h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">My Reservations</h6>
+            <a href="{% url 'merchant:reservations' %}" class="btn btn-ct-yellow btn-sm" style="font-size:0.75rem;padding:0.25rem 0.75rem;">View All</a>
+          </div>
+          {% if my_apps %}
+          <div class="d-flex flex-column gap-2">
+            {% for app in my_apps %}
+            <div class="ct-app-card">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fw-semibold" style="font-size:0.9rem;">{{ app.event.title }}</div>
+                  <div class="text-muted" style="font-size:0.8rem;">Booth {{ app.booth.booth_number }} · Applied {{ app.applied_at|date:"M d, Y" }}</div>
+                </div>
+                <span class="ct-badge ct-badge-{{ app.status|lower }}">{{ app.get_status_display }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-muted mb-1" style="font-size:0.875rem;">No reservations yet.</p>
+          <a href="{% url 'merchant:event_list' %}" class="btn btn-ct-yellow btn-sm">Browse Events →</a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Discover Events -->
+      <div class="col-md-6">
+        <div class="ct-card h-100">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">Open Events</h6>
+            <a href="{% url 'merchant:event_list' %}" class="btn btn-ct-yellow btn-sm" style="font-size:0.75rem;padding:0.25rem 0.75rem;">Browse All</a>
+          </div>
+          {% if open_events %}
+          <div class="d-flex flex-column gap-2">
+            {% for event in open_events %}
+            <div class="ct-event-card">
+              <div class="fw-semibold" style="font-size:0.9rem;">{{ event.title }}</div>
+              <div class="d-flex justify-content-between align-items-center mt-1">
+                <span class="text-muted" style="font-size:0.8rem;">{{ event.get_event_type_display }} · {{ event.start_date|date:"M d, Y" }}</span>
+                <a href="{% url 'merchant:event_detail' event.slug %}" class="btn btn-ct-purple btn-sm" style="font-size:0.7rem;padding:0.15rem 0.5rem;">View</a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-muted mb-0" style="font-size:0.875rem;">No open events at the moment.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

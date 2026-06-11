@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Reject Payment — ConTrack{% endblock %}
+
+{% block main %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/organizer_sidebar.html' %}
+  <div class="ct-dashboard-main">
+    <div class="ct-card" style="max-width:480px;">
+      <h5 class="fw-bold mb-3">Reject Payment</h5>
+      <p>Rejecting payment from <strong>{{ payment.application.merchant.username }}</strong>.</p>
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">Reason for rejection</label>
+          <textarea name="rejection_reason" class="form-control" rows="3" placeholder="Explain why the payment is being rejected…"></textarea>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-danger btn-sm">Reject Payment</button>
+          <a href="{% url 'organizer:payment_list' %}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

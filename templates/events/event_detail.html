@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}{{ event.title }} — ConTrack{% endblock %}
+
+{% block main %}
+<main class="container py-4">
+  <a href="{% url 'events:event_list' %}" class="text-muted text-decoration-none mb-3 d-inline-block" style="font-size:0.875rem;">← Back to Events</a>
+
+  {% if event.banner_image %}
+  <img src="{{ event.banner_image.url }}" alt="{{ event.title }}" style="width:100%;max-height:280px;object-fit:cover;border-radius:10px;margin-bottom:1.25rem;">
+  {% endif %}
+
+  <div class="row g-3">
+    <div class="col-md-8">
+      <div class="ct-card">
+        <div class="mb-2">
+          <span class="ct-badge ct-badge-approved me-2">{{ event.get_event_type_display }}</span>
+          <span class="ct-badge ct-badge-{{ event.status|lower }}">{{ event.get_status_display }}</span>
+        </div>
+        <h3 class="fw-bold mb-1">{{ event.title }}</h3>
+        <p class="text-muted mb-3" style="font-size:0.9rem;">
+          <i class="bi bi-calendar me-1"></i>{{ event.start_date|date:"M d, Y" }} — {{ event.end_date|date:"M d, Y" }}
+          &nbsp;|&nbsp;
+          <i class="bi bi-geo-alt me-1"></i>{{ event.venue_name }}
+        </p>
+        <p>{{ event.description }}</p>
+
+        <hr>
+        <p class="text-muted mb-1" style="font-size:0.875rem;"><strong>Venue:</strong> {{ event.address }}</p>
+        <p class="text-muted mb-0" style="font-size:0.875rem;">
+          <strong>Applications Open:</strong> {{ event.application_open_date|date:"M d, Y" }} — {{ event.application_close_date|date:"M d, Y" }}
+        </p>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="ct-card">
+        <h6 class="fw-bold mb-2">Booth Map</h6>
+        {% if event.has_floor_plan %}
+        <a href="{% url 'merchant:floor_plan' event.slug %}" class="btn btn-ct-yellow w-100 mb-2">
+          <i class="bi bi-map me-1"></i>View Floor Plan
+        </a>
+        {% else %}
+        <p class="text-muted mb-0" style="font-size:0.875rem;">Floor plan not yet available.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}

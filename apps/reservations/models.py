@@ -1,17 +1,17 @@
 """
 reservations/models.py
 =======================
-An Application is submitted by a Merchant for a specific Booth at an Event.
-The Organizer of that event reviews it and sets the status.
+Application — submitted by a Merchant for a Booth at an Event.
 
 Status lifecycle:
-  PENDING → APPROVED  (organizer accepts the merchant)
-  PENDING → REJECTED  (organizer declines)
-  PENDING → WAITLISTED (booth is taken, merchant is queued)
-  Any     → CANCELLED  (merchant withdraws their own application)
+  PENDING   → APPROVED   organizer accepts and payment is confirmed
+  PENDING   → DENIED     organizer declines (with admin_notes reason)
+  PENDING   → WAITLISTED booth is taken, merchant is queued
+  Any       → CANCELLED  merchant withdraws
+  APPROVED  → COMPLETED  second payment confirmed (half/half only)
 
-When an Application is APPROVED, the related Booth's status is set to RESERVED.
-When an Application is REJECTED or CANCELLED, the Booth goes back to AVAILABLE.
+Payment is submitted WITH the initial application (receipt_image_1).
+For half/half reservations a second receipt (receipt_image_2) is uploaded later.
 """
 
 from django.conf import settings
@@ -21,12 +21,20 @@ from django.db import models
 class Application(models.Model):
 
     class Status(models.TextChoices):
-        PENDING    = 'PENDING',    'Pending'
-        APPROVED   = 'APPROVED',   'Approved'
-        REJECTED   = 'REJECTED',   'Rejected'
-        WAITLISTED = 'WAITLISTED', 'Waitlisted'
-        CANCELLED  = 'CANCELLED',  'Cancelled'
+        PENDING   = 'PENDING',   'Pending'
+        APPROVED  = 'APPROVED',  'Approved'
+        DENIED    = 'DENIED',    'Denied'
+        REJECTED  = 'REJECTED',  'Rejected'   # legacy alias kept for existing data
+        CANCELLED = 'CANCELLED', 'Cancelled'
+        COMPLETED = 'COMPLETED', 'Completed'
 
+    class PaymentStatus(models.TextChoices):
+        UNPAID  = 'unpaid',   'Unpaid'
+        PARTIAL = 'partial',  'Partial Paid'
+        PAID    = 'paid',     'Fully Paid'
+        OVERDUE = 'overdue',  'Overdue'
+
+    # ── Core relations ────────────────────────────────────────────────────────
     merchant = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -38,30 +46,67 @@ class Application(models.Model):
         on_delete=models.CASCADE,
         related_name='applications',
     )
-    # Denormalized for easy querying without joining through booth → floor_plan → event
     event = models.ForeignKey(
         'events.Event',
         on_delete=models.CASCADE,
         related_name='applications',
     )
 
-    # Merchant's self-reported info for this application
-    business_name       = models.CharField(max_length=200)
-    product_description = models.TextField(help_text='Briefly describe what you will be selling.')
-    special_requests    = models.TextField(blank=True, help_text='Any special setup needs or requests.')
+    # ── Merchant application info ─────────────────────────────────────────────
+    business_name       = models.CharField(max_length=200, blank=True)
+    product_description = models.TextField(blank=True)
+    special_requests    = models.TextField(blank=True)
 
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    # ── Reservation status ────────────────────────────────────────────────────
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING,
+    )
 
-    # Organizer-only field: internal notes visible only in organizer dashboard
-    organizer_notes = models.TextField(blank=True)
+    # ── Payment fields (collected at reservation time) ────────────────────────
+    payment_option_chosen = models.CharField(
+        max_length=10,
+        choices=[('full', 'Full Payment'), ('half', '50/50 Half Payment')],
+        blank=True,
+    )
+    payment_status = models.CharField(
+        max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.UNPAID,
+    )
+    first_payment_amount    = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    second_payment_amount   = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    second_payment_deadline = models.DateField(null=True, blank=True)
+    receipt_image_1         = models.ImageField(upload_to='payment_proofs/', blank=True, null=True)
+    receipt_image_2         = models.ImageField(upload_to='payment_proofs/', blank=True, null=True)
 
-    applied_at  = models.DateTimeField(auto_now_add=True)
-    updated_at  = models.DateTimeField(auto_now=True)
+    # ── Merchant contact (denormalized at reservation time) ───────────────────
+    merchant_name     = models.CharField(max_length=200, blank=True)
+    merchant_phone    = models.CharField(max_length=30, blank=True)
+    merchant_email    = models.EmailField(blank=True)
+    merchant_facebook = models.URLField(blank=True)
+
+    # ── Admin fields ──────────────────────────────────────────────────────────
+    organizer_notes = models.TextField(blank=True)   # legacy internal notes
+    admin_notes     = models.TextField(blank=True)   # shown to merchant on denial/resubmit
+    confirmed_at    = models.DateTimeField(null=True, blank=True)
+    is_disabled     = models.BooleanField(default=False)  # hidden from merchant, booth freed
+
+    applied_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-applied_at']
-        # A merchant can only have one active application per booth
         unique_together = [['merchant', 'booth']]
 
     def __str__(self):
         return f'{self.merchant.username} → Booth {self.booth.booth_number} @ {self.event.title}'
+
+    @property
+    def is_half_payment(self):
+        return self.payment_option_chosen == 'half'
+
+    @property
+    def days_until_second_deadline(self):
+        if not self.second_payment_deadline:
+            return None
+        from django.utils import timezone
+        delta = self.second_payment_deadline - timezone.now().date()
+        return delta.days

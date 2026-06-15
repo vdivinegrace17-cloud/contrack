@@ -21,20 +21,14 @@
     <i class="bi bi-clipboard-check me-2"></i>Reservations
   </a>
 
-  <a href="{% url 'organizer:payment_list' %}"
-     class="{% if 'payment' in view_name %}active{% endif %}">
-    <i class="bi bi-credit-card me-2"></i>Payments
+  <a href="{% url 'organizer:payment_settings' %}"
+     class="{% if 'payment_settings' in view_name or 'payment_method' in view_name %}active{% endif %}">
+    <i class="bi bi-gear me-2"></i>Payment Settings
   </a>
 
   <a href="{% url 'organizer:merchant_list' %}"
      class="{% if 'merchant' in view_name %}active{% endif %}">
     <i class="bi bi-people me-2"></i>Merchants
-  </a>
-
-  <a href="{% url 'notifications:inbox' %}"
-     class="{% if 'notifications' in view_name %}active{% endif %}">
-    <i class="bi bi-bell me-2"></i>Notifications
-    {% if unread_count %}<span class="badge bg-danger ms-1" style="font-size:0.65rem;">{{ unread_count }}</span>{% endif %}
   </a>
 
   <div class="sidebar-divider"></div>

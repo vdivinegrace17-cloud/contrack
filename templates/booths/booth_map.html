@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Booth Map — {{ event.title }}{% endblock %}
+
+{% block main %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/merchant_sidebar.html' %}
+  <div class="ct-dashboard-main">
+
+    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+      <a href="{% url 'merchant:event_detail' event.slug %}" class="text-muted text-decoration-none" style="font-size:0.875rem;">← {{ event.title }}</a>
+      <span class="text-muted">/</span>
+      <h4 class="fw-bold mb-0" style="color:var(--ct-purple-dark);">Booth Map</h4>
+    </div>
+
+    <!-- Mobile warning -->
+    <div class="d-md-none alert alert-warning text-center py-2 mb-3" style="font-size:0.85rem;">
+      <i class="bi bi-phone me-1"></i> For the best experience, use a larger screen when reserving booths.
+    </div>
+
+    <div class="ct-card mb-3 d-flex align-items-center gap-3 flex-wrap">
+      <div class="d-flex gap-2 align-items-center flex-wrap" style="font-size:0.8rem;">
+        <span style="display:inline-block;width:14px;height:14px;background:#22c55e;border-radius:3px;"></span> Available
+        <span style="display:inline-block;width:14px;height:14px;background:#f97316;border-radius:3px;"></span> Pending
+        <span style="display:inline-block;width:14px;height:14px;background:#ef4444;border-radius:3px;"></span> Reserved
+        <span style="display:inline-block;width:14px;height:14px;background:#9ca3af;border-radius:3px;"></span> Unavailable
+      </div>
+      <span class="text-muted ms-auto" style="font-size:0.8rem;">Click a green slot to apply</span>
+    </div>
+
+    <div class="ct-card">
+      <div id="boothMapEmpty" class="text-center py-5 {% if layout_json != '[]' %}d-none{% endif %}">
+        <i class="bi bi-grid-3x3 text-muted" style="font-size:2.5rem;"></i>
+        <p class="text-muted mt-2 mb-0">No booths have been set up for this event yet.<br>
+          Check back later when the organizer has configured the booth layout.</p>
+      </div>
+      <div class="fp-canvas-wrap {% if layout_json == '[]' %}d-none{% endif %}" id="boothMapGrid">
+        <canvas id="fpCanvas" width="960" height="540"></canvas>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── 3-Step Reservation Modal ──────────────────────────────────────────── -->
+<div class="modal fade" id="reserveModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-bold mb-0" id="reserveModalTitle">Reserve Booth</h5>
+          <small class="text-muted" id="reserveStepIndicator">Step 1 of 3</small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body p-0">
+        <div id="reserveError" class="alert alert-danger mx-3 mt-3 mb-0 d-none"></div>
+        <input type="hidden" id="reserve_booth_id">
+
+        <!-- ── Step 1: Booth Info + Payment Option + T&C ──────────────── -->
+        <div id="step1" class="p-3">
+          <div class="ct-card p-3 mb-3" style="background:var(--ct-purple-light,#f3f0ff);">
+            <div class="fw-bold" id="reserve_booth_label" style="font-size:1rem;"></div>
+            <div class="text-muted mb-1" style="font-size:0.85rem;" id="reserve_booth_category"></div>
+            <div style="font-size:0.8rem;color:var(--ct-purple);" id="reserve_booth_type"></div>
+            <div class="fw-bold mt-1" style="font-size:1.2rem;color:var(--ct-purple-dark);" id="reserve_booth_price"></div>
+          </div>
+
+          <!-- Payment option (shows only if half_half or both) -->
+          <div id="paymentOptionSection" class="mb-3 d-none">
+            <label class="form-label fw-semibold">Payment Option <span class="text-danger">*</span></label>
+            <div id="paymentOptionRadios"></div>
+            <div id="halfHalfInfo" class="alert alert-info mt-2 d-none py-2" style="font-size:0.8rem;">
+              <i class="bi bi-info-circle me-1"></i>
+              <span id="halfHalfText"></span>
+            </div>
+          </div>
+
+          <!-- T&C -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Terms &amp; Conditions</label>
+            <div id="tcBox" style="max-height:180px;overflow-y:auto;border:1px solid #dee2e6;border-radius:6px;padding:12px;font-size:0.8rem;background:#fafafa;white-space:pre-wrap;"></div>
+          </div>
+          <div class="form-check mb-1">
+            <input class="form-check-input" type="checkbox" id="tcAgree" onchange="onTcChange()">
+            <label class="form-check-label" for="tcAgree" style="font-size:0.85rem;">
+              I have read and agree to the Terms &amp; Conditions
+            </label>
+          </div>
+        </div>
+
+        <!-- ── Step 2: Contact Info ────────────────────────────────────── -->
+        <div id="step2" class="p-3 d-none">
+          <p class="text-muted mb-3" style="font-size:0.85rem;">
+            These details will be shared with the event organizer for your reservation.
+          </p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Full Name / Business Name <span class="text-danger">*</span></label>
+            <input type="text" id="contact_name" class="form-control" placeholder="Your name or business name">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Phone Number <span class="text-danger">*</span></label>
+            <input type="tel" id="contact_phone" class="form-control"
+                   placeholder="09XXXXXXXXX" maxlength="11"
+                   pattern="09[0-9]{9}" inputmode="numeric"
+                   oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11)">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Email Address <span class="text-danger">*</span></label>
+            <input type="email" id="contact_email" class="form-control" placeholder="you@email.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Facebook Profile / Page <span class="text-muted">(optional)</span></label>
+            <input type="url" id="contact_facebook" class="form-control" placeholder="https://facebook.com/...">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Products / Services <span class="text-muted">(optional)</span></label>
+            <textarea id="contact_products" class="form-control" rows="2" placeholder="What will you be selling?"></textarea>
+          </div>
+          <div class="mb-1">
+            <label class="form-label fw-semibold">Special Requests <span class="text-muted">(optional)</span></label>
+            <textarea id="contact_special" class="form-control" rows="2" placeholder="Any special setup needs?"></textarea>
+          </div>
+        </div>
+
+        <!-- ── Step 3: Payment Methods + Receipt Upload ─────────────────── -->
+        <div id="step3" class="p-3 d-none">
+          <p class="text-muted mb-3" style="font-size:0.85rem;">
+            Send your payment to any of the methods below, then upload your receipt.
+          </p>
+          <div id="paymentMethodsList" class="mb-3"></div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Upload Payment Receipt <span class="text-danger">*</span></label>
+            <input type="file" id="receipt_image_1" class="form-control" accept="image/*,.pdf">
+            <small class="text-muted">Max 5MB. JPG, PNG, or PDF.</small>
+          </div>
+        </div>
+
+      </div><!-- /modal-body -->
+
+      <div class="modal-footer d-flex justify-content-between">
+        <button type="button" class="btn btn-outline-secondary" id="btnBack" onclick="goBack()" style="display:none!important;visibility:hidden;">Back</button>
+        <div class="ms-auto d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" id="btnCancel">Cancel</button>
+          <button type="button" class="btn btn-ct-yellow" id="btnNext" onclick="goNext()" disabled>Next</button>
+          <button type="button" class="btn btn-ct-yellow d-none" id="btnNextStep2" onclick="goToStep3()">Next</button>
+          <button type="button" class="btn btn-ct-yellow d-none" id="btnSubmit" onclick="submitReservation()">
+            <i class="bi bi-check-lg me-1"></i>Submit Reservation
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /modal-content -->
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var LAYOUT_DATA      = {{ layout_json|safe }};
+var APPLY_URL_BASE   = "{% url 'merchant:apply' 0 %}".replace('/0/', '/');
+var GRID_COLS        = {{ grid_cols }};
+var GRID_ROWS        = {{ grid_rows }};
+var PAYMENT_SETTINGS = {{ payment_settings_json|safe }};
+var PAYMENT_METHODS  = {{ payment_methods_json|safe }};
+var USER_PROFILE     = {{ user_profile_json|safe }};
+</script>
+<script src="{% static 'js/booth_map.js' %}"></script>
+{% endblock %}

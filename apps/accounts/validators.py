@@ -27,8 +27,4 @@ class StrongPasswordValidator:
             )
 
     def get_help_text(self):
-        return (
-            "Your password must be at least 8 characters and include "
-            "an uppercase letter, a lowercase letter, a number, "
-            "and a special character."
-        )
+        return ''

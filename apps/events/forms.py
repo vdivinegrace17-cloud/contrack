@@ -9,7 +9,7 @@ class EventForm(forms.ModelForm):
             'title', 'description', 'event_type', 'banner_image',
             'start_date', 'end_date',
             'application_open_date', 'application_close_date',
-            'venue_name', 'address', 'latitude', 'longitude',
+            'venue_name', 'address',
             'status',
         ]
         widgets = {
@@ -24,6 +24,7 @@ class EventForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
+            field.help_text = ''
             if not isinstance(field.widget, forms.FileInput):
                 field.widget.attrs.setdefault('class', 'form-control')
         # Pre-format datetime fields for the HTML input

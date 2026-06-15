@@ -21,12 +21,6 @@
     <i class="bi bi-clipboard-check me-2"></i>My Reservations
   </a>
 
-  <a href="{% url 'notifications:inbox' %}"
-     class="{% if 'notifications' in view_name %}active{% endif %}">
-    <i class="bi bi-bell me-2"></i>Notifications
-    {% if unread_count %}<span class="badge bg-danger ms-1" style="font-size:0.65rem;">{{ unread_count }}</span>{% endif %}
-  </a>
-
   <div class="sidebar-divider"></div>
 
   <a href="{% url 'merchant:profile' %}"

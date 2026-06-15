@@ -28,17 +28,11 @@
           <div class="stat-label">Pending Reservations</div>
         </div>
       </div>
-      <div class="col-6 col-md-3">
-        <div class="ct-stat-card">
-          <div class="stat-number">{{ pending_payments }}</div>
-          <div class="stat-label">Pending Payments</div>
-        </div>
-      </div>
     </div>
 
     <div class="row g-3">
       <!-- Recent Reservations -->
-      <div class="col-md-6">
+      <div class="col-12">
         <div class="ct-card">
           <div class="d-flex justify-content-between align-items-center mb-2">
             <h6 class="fw-bold mb-0">Recent Reservations</h6>
@@ -62,46 +56,17 @@
           {% endif %}
         </div>
       </div>
-
-      <!-- Recent Payments -->
-      <div class="col-md-6">
-        <div class="ct-card">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h6 class="fw-bold mb-0">Recent Payments</h6>
-            <a href="{% url 'organizer:payment_list' %}" class="btn btn-ct-purple btn-sm" style="font-size:0.75rem;padding:0.25rem 0.75rem;">View All</a>
-          </div>
-          {% if recent_payments %}
-          <table class="ct-table table table-sm mb-0">
-            <thead><tr><th>Merchant</th><th>Event</th><th>Status</th></tr></thead>
-            <tbody>
-              {% for p in recent_payments %}
-              <tr>
-                <td>{{ p.application.merchant.username }}</td>
-                <td>{{ p.application.event.title|truncatechars:25 }}</td>
-                <td><span class="ct-badge ct-badge-{{ p.status|lower }}">{{ p.get_status_display }}</span></td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-          {% else %}
-          <p class="text-muted mb-0" style="font-size:0.875rem;">No payments yet.</p>
-          {% endif %}
-        </div>
-      </div>
     </div>
 
     <!-- Quick actions -->
     <div class="ct-card mt-3">
       <h6 class="fw-bold mb-2">Quick Actions</h6>
       <div class="d-flex flex-wrap gap-2">
-        <a href="{% url 'organizer:create_event' %}" class="btn btn-ct-yellow btn-sm">
+        <a href="{% url 'organizer:event_list' %}" class="btn btn-ct-yellow btn-sm">
           <i class="bi bi-plus-circle me-1"></i>New Event
         </a>
         <a href="{% url 'organizer:reservation_list' %}" class="btn btn-ct-purple btn-sm">
           <i class="bi bi-clipboard-check me-1"></i>Review Reservations
-        </a>
-        <a href="{% url 'organizer:payment_list' %}" class="btn btn-ct-purple btn-sm">
-          <i class="bi bi-credit-card me-1"></i>Review Payments
         </a>
         <a href="{% url 'organizer:merchant_list' %}" class="btn btn-ct-purple-dark btn-sm">
           <i class="bi bi-people me-1"></i>Manage Merchants

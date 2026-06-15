@@ -45,13 +45,10 @@ class Event(models.Model):
     application_close_date = models.DateTimeField()
 
     # Venue information
-    venue_name = models.CharField(max_length=200)
-    address    = models.TextField()
-
-    # Geo-coordinates for Leaflet map embed on event detail page
-    # Merchants see a map pin of the venue when browsing events.
-    latitude  = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    venue_name   = models.CharField(max_length=200)
+    address      = models.TextField()
+    grid_columns = models.PositiveSmallIntegerField(default=24)
+    grid_rows    = models.PositiveSmallIntegerField(default=18)
 
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
 
@@ -79,5 +76,5 @@ class Event(models.Model):
         )
 
     @property
-    def has_floor_plan(self):
-        return hasattr(self, 'floor_plan') and self.floor_plan is not None
+    def has_booths(self):
+        return self.booths.filter(is_landmark=False).exists()

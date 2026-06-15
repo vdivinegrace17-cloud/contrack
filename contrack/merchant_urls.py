@@ -8,12 +8,13 @@ from django.urls import path
 
 from apps.accounts.views import merchant_dashboard, merchant_profile_view
 from apps.events.views import event_list, event_detail
-from apps.booths.views import floor_plan_view
+from apps.booths.views import booth_map_view
 from apps.reservations.views import (
     my_applications,
     application_detail,
     cancel_application,
     apply_for_booth,
+    submit_second_payment,
 )
 from apps.payments.views import submit_payment, payment_detail
 
@@ -26,12 +27,14 @@ urlpatterns = [
     # Browse events
     path('events/',             event_list,       name='event_list'),
     path('events/<slug:slug>/', event_detail,     name='event_detail'),
-    path('events/<slug:event_slug>/map/', floor_plan_view, name='floor_plan'),
+    path('events/<slug:event_slug>/map/',    booth_map_view, name='booth_map'),
+    path('events/<slug:event_slug>/layout/', booth_map_view, name='layout'),
 
     # Reservations
     path('reservations/',                        my_applications,     name='reservations'),
     path('reservations/<int:pk>/',               application_detail,  name='application_detail'),
-    path('reservations/<int:pk>/cancel/',        cancel_application,  name='cancel_application'),
+    path('reservations/<int:pk>/cancel/',         cancel_application,   name='cancel_application'),
+    path('reservations/<int:pk>/submit-second/', submit_second_payment, name='submit_second_payment'),
     path('reservations/apply/<int:booth_id>/',   apply_for_booth,     name='apply'),
 
     # Payments

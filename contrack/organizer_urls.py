@@ -16,27 +16,40 @@ from apps.events.views import (
     organizer_event_list,
     create_event,
     edit_event,
+    event_data,
     delete_event,
+    publish_event,
 )
 from apps.booths.views import (
-    upload_floor_plan,
-    booth_tagger,
-    save_booth,
+    manage_booths,
+    get_layout,
+    save_layout,
+    delete_layout_item,
     delete_booth,
+    clear_booths,
+    booth_reservation_info,
 )
 from apps.reservations.views import (
     organizer_reservation_list,
     event_applications,
     approve_application,
+    deny_application,
     reject_application,
-    waitlist_application,
     application_detail,
+    application_detail_json,
+    request_resubmission,
+    approve_second_payment,
+    extend_deadline,
+    change_status,
+    disable_reservation,
+    delete_reservation,
 )
 from apps.payments.views import (
-    organizer_payment_list,
-    pending_payments,
-    verify_payment,
-    reject_payment,
+    payment_settings_view,
+    payment_method_create,
+    payment_method_edit,
+    payment_method_delete,
+    payment_method_toggle,
 )
 
 app_name = 'organizer'
@@ -54,26 +67,39 @@ urlpatterns = [
     path('events/create/',                     create_event,         name='create_event'),
     path('events/<slug:slug>/edit/',           edit_event,           name='edit_event'),
     path('events/<slug:slug>/delete/',         delete_event,         name='delete_event'),
+    path('events/<slug:slug>/data/',           event_data,           name='event_data'),
+    path('events/<slug:slug>/publish/',        publish_event,        name='publish_event'),
 
-    # Booth management (per event)
-    path('events/<slug:event_slug>/booths/upload/',  upload_floor_plan, name='upload_floor_plan'),
-    path('events/<slug:event_slug>/booths/tagger/',  booth_tagger,      name='booth_tagger'),
-    path('events/<slug:event_slug>/booths/save/',    save_booth,        name='save_booth'),
-    path('booths/<int:booth_id>/delete/',            delete_booth,      name='delete_booth'),
+    # Booth / floor-plan management (per event)
+    path('events/<slug:event_slug>/booths/manage/',                 manage_booths,      name='manage_booths'),
+    path('events/<slug:event_slug>/layout/',                        get_layout,         name='get_layout'),
+    path('events/<slug:event_slug>/layout/save/',                   save_layout,        name='save_layout'),
+    path('events/<slug:event_slug>/layout/<int:item_id>/delete/',   delete_layout_item, name='delete_layout_item'),
+    path('events/<slug:event_slug>/booths/clear/',                  clear_booths,       name='clear_booths'),
+    path('booths/<int:booth_id>/delete/',                           delete_booth,       name='delete_booth'),
+    path('booths/<int:booth_id>/info/',                             booth_reservation_info, name='booth_reservation_info'),
 
     # Reservation management
-    path('reservations/',                      organizer_reservation_list,            name='reservation_list'),
-    path('reservations/<slug:event_slug>/',    event_applications,                    name='event_applications'),
-    path('reservations/<int:pk>/detail/',      application_detail,                    name='application_detail'),
-    path('reservations/<int:pk>/approve/',     approve_application,                   name='approve_application'),
-    path('reservations/<int:pk>/reject/',      reject_application,                    name='reject_application'),
-    path('reservations/<int:pk>/waitlist/',    waitlist_application,                  name='waitlist_application'),
+    path('reservations/',                             organizer_reservation_list, name='reservation_list'),
+    path('reservations/<slug:event_slug>/',           event_applications,         name='event_applications'),
+    path('reservations/<int:pk>/detail/',             application_detail,         name='application_detail'),
+    path('reservations/<int:pk>/detail/json/',        application_detail_json,    name='application_detail_json'),
+    path('reservations/<int:pk>/approve/',            approve_application,        name='approve_application'),
+    path('reservations/<int:pk>/deny/',               deny_application,           name='deny_application'),
+    path('reservations/<int:pk>/reject/',             reject_application,         name='reject_application'),
+    path('reservations/<int:pk>/resubmit/',           request_resubmission,       name='request_resubmission'),
+    path('reservations/<int:pk>/approve-second/',     approve_second_payment,     name='approve_second_payment'),
+    path('reservations/<int:pk>/extend-deadline/',    extend_deadline,            name='extend_deadline'),
+    path('reservations/<int:pk>/change-status/',      change_status,              name='change_status'),
+    path('reservations/<int:pk>/disable/',            disable_reservation,        name='disable_reservation'),
+    path('reservations/<int:pk>/delete/',             delete_reservation,         name='delete_reservation'),
 
-    # Payment management
-    path('payments/',                          organizer_payment_list,  name='payment_list'),
-    path('payments/<slug:event_slug>/pending/', pending_payments,       name='pending_payments'),
-    path('payments/<int:pk>/verify/',          verify_payment,          name='verify_payment'),
-    path('payments/<int:pk>/reject/',          reject_payment,          name='reject_payment'),
+    # Payment Settings
+    path('payment-settings/',                  payment_settings_view,  name='payment_settings'),
+    path('payment-methods/create/',            payment_method_create,  name='payment_method_create'),
+    path('payment-methods/<int:pk>/edit/',     payment_method_edit,    name='payment_method_edit'),
+    path('payment-methods/<int:pk>/delete/',   payment_method_delete,  name='payment_method_delete'),
+    path('payment-methods/<int:pk>/toggle/',   payment_method_toggle,  name='payment_method_toggle'),
 
     # Profile
     path('profile/', organizer_profile_view, name='profile'),

@@ -13,6 +13,7 @@ class User(AbstractUser):
         default=Role.MERCHANT,
     )
     phone_number    = models.CharField(max_length=20, blank=True)
+    facebook_url    = models.URLField(blank=True)
     profile_picture = models.ImageField(upload_to='profiles/', blank=True, null=True)
     bio             = models.TextField(blank=True)
     updated_at      = models.DateTimeField(auto_now=True)

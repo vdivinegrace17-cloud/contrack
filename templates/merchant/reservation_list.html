@@ -6,41 +6,283 @@
   {% include 'partials/merchant_sidebar.html' %}
 
   <div class="ct-dashboard-main">
-    <h4 class="fw-bold mb-3" style="color:var(--ct-purple-dark);">My Reservations</h4>
 
-    {% if applications %}
-    <div class="d-flex flex-column gap-3">
-      {% for app in applications %}
-      <div class="ct-card">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <div class="fw-bold" style="font-size:1rem;">{{ app.event.title }}</div>
-            <div class="text-muted" style="font-size:0.875rem;">
-              Booth {{ app.booth.booth_number }}
-              {% if app.booth.label %} — {{ app.booth.label }}{% endif %}
-              · Applied {{ app.applied_at|date:"M d, Y" }}
-            </div>
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+      <h4 class="fw-bold mb-0" style="color:var(--ct-purple-dark);">
+        <i class="bi bi-clipboard me-2"></i>My Reservations
+      </h4>
+      <form method="get" class="d-flex gap-1">
+        <select name="status" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+          <option value="">All Statuses</option>
+          {% for val, label in status_choices %}
+          <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% if status_filter %}
+        <a href="{% url 'merchant:reservations' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+        {% endif %}
+      </form>
+    </div>
+
+    {% if page_obj.object_list %}
+    <div class="row g-3">
+      {% for app in page_obj %}
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="ct-card h-100 d-flex flex-column" style="border-top:3px solid
+          {% if app.status == 'APPROVED' or app.status == 'COMPLETED' %}#22c55e
+          {% elif app.status == 'PENDING' %}#f59e0b
+          {% elif app.status == 'DENIED' or app.status == 'REJECTED' %}#ef4444
+          {% else %}#9ca3af{% endif %};">
+
+          <!-- Header -->
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="fw-bold" style="font-size:0.95rem;line-height:1.3;">{{ app.event.title }}</div>
+            <span class="badge ms-2 flex-shrink-0"
+                  style="{% if app.status == 'PENDING' %}background:#f59e0b;color:#1a1a1a;
+                         {% elif app.status == 'APPROVED' %}background:#22c55e;
+                         {% elif app.status == 'DENIED' or app.status == 'REJECTED' %}background:#ef4444;
+                         {% elif app.status == 'COMPLETED' %}background:#0ea5e9;
+                         {% elif app.status == 'WAITLISTED' %}background:#8b5cf6;
+                         {% else %}background:#9ca3af;{% endif %}">
+              {{ app.get_status_display }}
+            </span>
           </div>
-          <span class="ct-badge ct-badge-{{ app.status|lower }} ms-2">{{ app.get_status_display }}</span>
-        </div>
-        <div class="mt-2 d-flex gap-2">
-          <a href="{% url 'merchant:application_detail' app.pk %}" class="btn btn-sm btn-outline-secondary">View Details</a>
-          {% if app.status == 'PENDING' %}
-          <a href="{% url 'merchant:cancel_application' app.pk %}" class="btn btn-sm btn-outline-danger">Cancel</a>
-          {% endif %}
-          {% if app.status == 'APPROVED' %}
-          <a href="{% url 'merchant:submit_payment' app.pk %}" class="btn btn-sm btn-ct-yellow">Submit Payment</a>
-          {% endif %}
+
+          <!-- Booth info -->
+          <div class="mb-2" style="font-size:0.825rem;color:#6b7280;">
+            <i class="bi bi-grid me-1"></i>{{ app.booth.display_name }}
+            &nbsp;·&nbsp;
+            <i class="bi bi-calendar3 me-1"></i>{{ app.applied_at|date:"M d, Y" }}
+          </div>
+
+          <!-- Payment summary -->
+          <div class="ct-card p-2 mb-2" style="background:#f9fafb;font-size:0.825rem;">
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">
+                {% if app.payment_option_chosen == 'half' %}50/50 Payment{% else %}Full Payment{% endif %}
+              </span>
+              <span class="fw-semibold" style="color:var(--ct-purple-dark);">₱{{ app.first_payment_amount|floatformat:2 }}</span>
+            </div>
+            {% if app.payment_option_chosen == 'half' and app.second_payment_amount %}
+            <div class="d-flex justify-content-between mt-1">
+              <span class="text-muted">2nd Payment</span>
+              <span>₱{{ app.second_payment_amount|floatformat:2 }}</span>
+            </div>
+            {% if app.second_payment_deadline %}
+            <div class="d-flex justify-content-between mt-1 {% if app.days_until_second_deadline is not None and app.days_until_second_deadline <= 3 %}text-danger fw-semibold{% endif %}">
+              <span class="text-muted">Due</span>
+              <span>
+                {% if app.days_until_second_deadline is not None and app.days_until_second_deadline <= 0 %}
+                  <i class="bi bi-exclamation-triangle-fill me-1"></i>Overdue
+                {% else %}
+                  {{ app.second_payment_deadline|date:"M d, Y" }}
+                  {% if app.days_until_second_deadline is not None and app.days_until_second_deadline <= 3 %}
+                    <span class="badge bg-warning text-dark ms-1">{{ app.days_until_second_deadline }}d left</span>
+                  {% endif %}
+                {% endif %}
+              </span>
+            </div>
+            {% endif %}
+            {% endif %}
+          </div>
+
+          <!-- Actions -->
+          <div class="mt-auto d-flex flex-wrap gap-1 pt-2">
+            <a href="{% url 'merchant:application_detail' app.pk %}" class="btn btn-outline-secondary btn-sm">
+              {% if app.status == 'APPROVED' or app.status == 'COMPLETED' %}
+                <i class="bi bi-award me-1"></i>View Confirmation
+              {% else %}
+                <i class="bi bi-eye me-1"></i>Details
+              {% endif %}
+            </a>
+
+            {% if app.status == 'APPROVED' and app.payment_option_chosen == 'half' and not app.receipt_image_2 %}
+            <button class="btn btn-ct-yellow btn-sm"
+                    onclick="openSecondPaymentModal({{ app.pk }}, '{{ app.booth.display_name|escapejs }}', '{{ app.second_payment_amount|floatformat:2 }}', '{{ app.second_payment_deadline|date:"Y-m-d" }}')">
+              <i class="bi bi-cash me-1"></i>2nd Payment
+            </button>
+            {% endif %}
+
+            {% if app.status == 'PENDING' %}
+            <button class="btn btn-outline-danger btn-sm" onclick="cancelReservation({{ app.pk }})">
+              <i class="bi bi-x me-1"></i>Cancel
+            </button>
+            {% endif %}
+          </div>
+
         </div>
       </div>
       {% endfor %}
     </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="d-flex justify-content-center mt-4">
+      <nav>
+        <ul class="pagination pagination-sm mb-0">
+          {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}">«</a></li>
+          {% endif %}
+          {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item"><a class="page-link" href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}">{{ num }}</a></li>
+            {% endif %}
+          {% endfor %}
+          {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}">»</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+
     {% else %}
-    <div class="ct-card text-center py-4">
-      <p class="text-muted mb-2">You haven't applied for any booths yet.</p>
+    <div class="ct-card text-center py-5">
+      <i class="bi bi-inbox text-muted" style="font-size:2.5rem;"></i>
+      <p class="text-muted mt-2 mb-3">
+        {% if status_filter %}No reservations with this status.{% else %}You haven't applied for any booths yet.{% endif %}
+      </p>
       <a href="{% url 'merchant:event_list' %}" class="btn btn-ct-yellow">Browse Events →</a>
     </div>
     {% endif %}
+
   </div>
 </div>
+
+<!-- ── Second Payment Modal ───────────────────────────────────────────── -->
+<div class="modal fade" id="secondPaymentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="bi bi-cash me-2"></i>Submit Second Payment</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="sp2Error" class="alert alert-danger d-none"></div>
+        <input type="hidden" id="sp2_app_id">
+
+        <div class="ct-card p-3 mb-3" style="background:#f0fdf4;">
+          <div class="fw-semibold" id="sp2_booth_label"></div>
+          <div class="d-flex justify-content-between mt-1" style="font-size:0.875rem;">
+            <span class="text-muted">Amount due</span>
+            <span class="fw-bold" style="color:var(--ct-purple-dark);">₱<span id="sp2_amount"></span></span>
+          </div>
+          <div class="d-flex justify-content-between" style="font-size:0.875rem;">
+            <span class="text-muted">Deadline</span>
+            <span id="sp2_deadline"></span>
+          </div>
+        </div>
+
+        <div id="sp2_methods" class="mb-3"></div>
+
+        <div class="mb-2">
+          <label class="form-label fw-semibold">Upload Payment Receipt <span class="text-danger">*</span></label>
+          <input type="file" id="sp2_receipt" class="form-control" accept="image/*,.pdf">
+          <small class="text-muted">Max 5MB. JPG, PNG, or PDF.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-ct-yellow" id="btn_sp2_submit" onclick="submitSecondPayment()">
+          <i class="bi bi-upload me-1"></i>Submit Receipt
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var CSRF = "{{ csrf_token }}";
+
+function cancelReservation(pk) {
+  if (!confirm('Cancel this reservation? This cannot be undone.')) return;
+  var fd = new FormData();
+  fd.append('confirmed', '1');
+  fetch('/merchant/reservations/' + pk + '/cancel/', {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+    body: fd,
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) { window.location.reload(); }
+    else { showToast(d.error || 'Failed to cancel.', 'danger'); }
+  });
+}
+
+function openSecondPaymentModal(pk, boothLabel, amount, deadline) {
+  document.getElementById('sp2_app_id').value     = pk;
+  document.getElementById('sp2_booth_label').textContent = boothLabel;
+  document.getElementById('sp2_amount').textContent = parseFloat(amount).toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('sp2_deadline').textContent = deadline || '—';
+  document.getElementById('sp2_receipt').value = '';
+  document.getElementById('sp2Error').classList.add('d-none');
+
+  // Payment methods from global (if available on page)
+  var container = document.getElementById('sp2_methods');
+  container.innerHTML = '';
+  if (typeof PAYMENT_METHODS !== 'undefined' && PAYMENT_METHODS.length) {
+    PAYMENT_METHODS.forEach(function(m) {
+      var div = document.createElement('div');
+      div.className = 'ct-card p-2 mb-2 d-flex align-items-center gap-2';
+      div.style.fontSize = '0.85rem';
+      if (m.qr_code_url) {
+        div.innerHTML += '<img src="' + m.qr_code_url + '" style="width:56px;height:56px;object-fit:contain;">';
+      }
+      div.innerHTML += '<div><div class="fw-semibold">' + m.name + '</div>' +
+        (m.account_name   ? '<div class="text-muted">' + m.account_name   + '</div>' : '') +
+        (m.account_number ? '<div style="color:var(--ct-purple);">' + m.account_number + '</div>' : '') +
+        '</div>';
+      container.appendChild(div);
+    });
+  }
+
+  new bootstrap.Modal(document.getElementById('secondPaymentModal')).show();
+}
+
+function submitSecondPayment() {
+  var pk  = document.getElementById('sp2_app_id').value;
+  var err = document.getElementById('sp2Error');
+  err.classList.add('d-none');
+  var file = document.getElementById('sp2_receipt').files[0];
+  if (!file) { err.textContent = 'Please select a receipt file.'; err.classList.remove('d-none'); return; }
+  if (file.size > 5 * 1024 * 1024) { err.textContent = 'File too large (max 5MB).'; err.classList.remove('d-none'); return; }
+
+  var btn = document.getElementById('btn_sp2_submit');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Uploading…';
+
+  var fd = new FormData();
+  fd.append('receipt_image_2', file);
+  fetch('/merchant/reservations/' + pk + '/submit-second/', {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+    body: fd,
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-upload me-1"></i>Submit Receipt';
+    if (d.success) {
+      bootstrap.Modal.getInstance(document.getElementById('secondPaymentModal')).hide();
+      showToast('Second payment submitted! Awaiting organizer confirmation.', 'success');
+      setTimeout(function() { window.location.reload(); }, 1500);
+    } else {
+      err.textContent = d.error || 'Upload failed.';
+      err.classList.remove('d-none');
+    }
+  })
+  .catch(function() {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-upload me-1"></i>Submit Receipt';
+    err.textContent = 'Network error.';
+    err.classList.remove('d-none');
+  });
+}
+</script>
 {% endblock %}

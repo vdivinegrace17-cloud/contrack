@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Reservation Detail — ConTrack{% endblock %}
+{% block title %}Reservation #{{ application.pk }} — ConTrack{% endblock %}
 
 {% block main %}
 {% if user.is_organizer %}
@@ -11,6 +11,7 @@
   {% include 'partials/merchant_sidebar.html' %}
   <div class="ct-dashboard-main">
 {% endif %}
+
     <div class="d-flex align-items-center gap-2 mb-3">
       {% if user.is_organizer %}
       <a href="{% url 'organizer:reservation_list' %}" class="text-muted text-decoration-none" style="font-size:0.875rem;">← Reservations</a>
@@ -19,36 +20,214 @@
       {% endif %}
     </div>
 
-    <div class="ct-card" style="max-width:600px;">
-      <h5 class="fw-bold mb-3">Reservation Details</h5>
-      <dl class="row mb-0" style="font-size:0.95rem;">
-        <dt class="col-sm-4 text-muted">Merchant</dt>
-        <dd class="col-sm-8">{{ application.merchant.username }}</dd>
+    {% if user.is_merchant %}
 
+    <!-- ── APPROVED: Confirmation card ──────────────────────────────────── -->
+    {% if application.status == 'APPROVED' or application.status == 'COMPLETED' %}
+    <div class="ct-card mb-4" style="border-top:4px solid #22c55e;max-width:680px;">
+      <div class="text-center mb-3">
+        <i class="bi bi-check-circle-fill" style="font-size:3rem;color:#22c55e;"></i>
+        <h4 class="fw-bold mt-2 mb-0" style="color:#16a34a;">Reservation Confirmed!</h4>
+        <p class="text-muted mb-0" style="font-size:0.875rem;">Confirmation #{{ application.pk }}</p>
+      </div>
+
+      <div class="ct-card p-3 mb-3" style="background:#f0fdf4;">
+        <div class="row g-2" style="font-size:0.875rem;">
+          <div class="col-6">
+            <div class="text-muted">Event</div>
+            <div class="fw-semibold">{{ application.event.title }}</div>
+          </div>
+          <div class="col-6">
+            <div class="text-muted">Booth</div>
+            <div class="fw-semibold">{{ application.booth.display_name }}</div>
+          </div>
+          <div class="col-6">
+            <div class="text-muted">Booth Type</div>
+            <div>{{ application.booth.get_booth_type_display }}</div>
+          </div>
+          <div class="col-6">
+            <div class="text-muted">Total Price</div>
+            <div class="fw-bold" style="color:var(--ct-purple-dark);">₱{{ application.booth.price|floatformat:2 }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ct-card p-3 mb-3">
+        <div class="fw-bold mb-2" style="color:var(--ct-purple-dark);">Payment</div>
+        {% if application.payment_option_chosen == 'half' %}
+          <div class="d-flex justify-content-between mb-1" style="font-size:0.875rem;">
+            <span class="text-muted">1st Payment (paid)</span>
+            <span class="fw-semibold text-success">₱{{ application.first_payment_amount|floatformat:2 }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1" style="font-size:0.875rem;">
+            <span class="text-muted">2nd Payment remaining</span>
+            <span class="fw-semibold">₱{{ application.second_payment_amount|floatformat:2 }}</span>
+          </div>
+          {% if application.second_payment_deadline %}
+          <div class="d-flex justify-content-between" style="font-size:0.875rem;">
+            <span class="text-muted">Due date</span>
+            <span class="fw-semibold {% if days_left is not None and days_left <= 3 %}text-danger{% endif %}">
+              {{ application.second_payment_deadline|date:"F j, Y" }}
+              {% if days_left is not None %}
+                {% if days_left <= 0 %}
+                  <span class="badge bg-danger ms-1">Overdue</span>
+                {% elif days_left <= 3 %}
+                  <span class="badge bg-warning text-dark ms-1">{{ days_left }} day{{ days_left|pluralize }} left</span>
+                {% else %}
+                  <span class="badge bg-secondary ms-1">{{ days_left }} days left</span>
+                {% endif %}
+              {% endif %}
+            </span>
+          </div>
+          {% endif %}
+          {% if application.status == 'COMPLETED' %}
+          <div class="alert alert-success mt-2 py-2 mb-0" style="font-size:0.8rem;">
+            <i class="bi bi-check-circle me-1"></i> Fully paid — reservation complete!
+          </div>
+          {% elif not application.receipt_image_2 %}
+          <div class="alert alert-warning mt-2 py-2 mb-0" style="font-size:0.8rem;">
+            <i class="bi bi-exclamation-triangle me-1"></i> Your second payment receipt has not been uploaded yet.
+            <a href="{% url 'merchant:reservations' %}" class="alert-link ms-1">Submit now →</a>
+          </div>
+          {% endif %}
+        {% else %}
+          <div class="d-flex justify-content-between" style="font-size:0.875rem;">
+            <span class="text-muted">Full Payment</span>
+            <span class="fw-semibold text-success">₱{{ application.first_payment_amount|floatformat:2 }}</span>
+          </div>
+        {% endif %}
+      </div>
+
+      {% if ps %}
+      <div class="ct-card p-3 mb-3">
+        <div class="fw-bold mb-2" style="color:var(--ct-purple-dark);">Organizer Contact</div>
+        {% if ps.organizer_name %}<div class="fw-semibold">{{ ps.organizer_name }}</div>{% endif %}
+        {% if ps.organizer_phone %}<div class="text-muted" style="font-size:0.875rem;"><i class="bi bi-telephone me-1"></i>{{ ps.organizer_phone }}</div>{% endif %}
+        {% if ps.organizer_email %}<div class="text-muted" style="font-size:0.875rem;"><i class="bi bi-envelope me-1"></i>{{ ps.organizer_email }}</div>{% endif %}
+        {% if ps.organizer_facebook %}<div class="text-muted" style="font-size:0.875rem;"><i class="bi bi-facebook me-1"></i><a href="{{ ps.organizer_facebook }}" target="_blank" class="text-muted">{{ ps.organizer_facebook }}</a></div>{% endif %}
+        {% if ps.gc_messenger_link %}
+        <div class="mt-2">
+          <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;">Event Group Chat Link</label>
+          <div class="input-group input-group-sm">
+            <input type="text" class="form-control" id="gcLink" value="{{ ps.gc_messenger_link }}" readonly>
+            <button class="btn btn-ct-yellow" onclick="copyGcLink()">
+              <i class="bi bi-clipboard me-1"></i>Copy
+            </button>
+          </div>
+          <div id="gcCopied" class="text-success mt-1 d-none" style="font-size:0.78rem;">Copied to clipboard!</div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'merchant:reservations' %}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i>My Reservations
+        </a>
+      </div>
+    </div>
+
+    <!-- ── DENIED card ──────────────────────────────────────────────────── -->
+    {% elif application.status == 'DENIED' or application.status == 'REJECTED' %}
+    <div class="ct-card mb-4" style="border-top:4px solid #ef4444;max-width:560px;">
+      <div class="text-center mb-3">
+        <i class="bi bi-x-circle-fill" style="font-size:3rem;color:#ef4444;"></i>
+        <h4 class="fw-bold mt-2 mb-0" style="color:#dc2626;">Reservation Not Approved</h4>
+      </div>
+      <p class="mb-2" style="font-size:0.875rem;"><span class="text-muted">Event:</span> {{ application.event.title }}</p>
+      <p class="mb-2" style="font-size:0.875rem;"><span class="text-muted">Booth:</span> {{ application.booth.display_name }}</p>
+      {% if application.admin_notes or application.organizer_notes %}
+      <div class="alert alert-danger py-2" style="font-size:0.875rem;">
+        <strong>Reason:</strong> {{ application.admin_notes|default:application.organizer_notes }}
+      </div>
+      {% endif %}
+      <a href="{% url 'merchant:booth_map' application.event.slug %}" class="btn btn-ct-yellow">
+        <i class="bi bi-arrow-left me-1"></i>Browse Other Booths
+      </a>
+    </div>
+
+    <!-- ── PENDING / CANCELLED card ─────────────────────────────────────── -->
+    {% else %}
+    <div class="ct-card mb-4" style="max-width:560px;">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        {% if application.status == 'PENDING' %}
+          <i class="bi bi-hourglass-split" style="font-size:1.5rem;color:#f59e0b;"></i>
+          <h5 class="fw-bold mb-0">Pending Review</h5>
+        {% else %}
+          <i class="bi bi-slash-circle" style="font-size:1.5rem;color:#9ca3af;"></i>
+          <h5 class="fw-bold mb-0">{{ application.get_status_display }}</h5>
+        {% endif %}
+      </div>
+      <dl class="row mb-0" style="font-size:0.875rem;">
         <dt class="col-sm-4 text-muted">Event</dt>
         <dd class="col-sm-8">{{ application.event.title }}</dd>
-
         <dt class="col-sm-4 text-muted">Booth</dt>
         <dd class="col-sm-8">{{ application.booth.display_name }}</dd>
-
-        <dt class="col-sm-4 text-muted">Business Name</dt>
-        <dd class="col-sm-8">{{ application.business_name|default:"—" }}</dd>
-
-        <dt class="col-sm-4 text-muted">Products</dt>
-        <dd class="col-sm-8">{{ application.product_description|default:"—" }}</dd>
-
-        <dt class="col-sm-4 text-muted">Special Requests</dt>
-        <dd class="col-sm-8">{{ application.special_requests|default:"—" }}</dd>
-
+        <dt class="col-sm-4 text-muted">Applied</dt>
+        <dd class="col-sm-8">{{ application.applied_at|date:"F j, Y" }}</dd>
         <dt class="col-sm-4 text-muted">Status</dt>
-        <dd class="col-sm-8">
-          <span class="ct-badge ct-badge-{{ application.status|lower }}">{{ application.get_status_display }}</span>
-        </dd>
+        <dd class="col-sm-8"><span class="badge bg-secondary">{{ application.get_status_display }}</span></dd>
+      </dl>
+    </div>
+    {% endif %}
 
+    {% else %}
+    <!-- ── Organizer detail view ─────────────────────────────────────────── -->
+    <div class="ct-card" style="max-width:680px;">
+      <h5 class="fw-bold mb-3">Reservation #{{ application.pk }}</h5>
+      <dl class="row mb-3" style="font-size:0.875rem;">
+        <dt class="col-sm-4 text-muted">Merchant</dt>
+        <dd class="col-sm-8">{{ application.merchant_name|default:application.merchant.username }}</dd>
+        <dt class="col-sm-4 text-muted">Phone</dt>
+        <dd class="col-sm-8">{{ application.merchant_phone|default:"—" }}</dd>
+        <dt class="col-sm-4 text-muted">Email</dt>
+        <dd class="col-sm-8">{{ application.merchant_email|default:"—" }}</dd>
+        <dt class="col-sm-4 text-muted">Event</dt>
+        <dd class="col-sm-8">{{ application.event.title }}</dd>
+        <dt class="col-sm-4 text-muted">Booth</dt>
+        <dd class="col-sm-8">{{ application.booth.display_name }}</dd>
+        <dt class="col-sm-4 text-muted">Payment Option</dt>
+        <dd class="col-sm-8">{{ application.payment_option_chosen|default:"full"|title }}</dd>
+        <dt class="col-sm-4 text-muted">Amount</dt>
+        <dd class="col-sm-8">₱{{ application.first_payment_amount|floatformat:2 }}</dd>
+        <dt class="col-sm-4 text-muted">Status</dt>
+        <dd class="col-sm-8">{{ application.get_status_display }}</dd>
         <dt class="col-sm-4 text-muted">Applied</dt>
         <dd class="col-sm-8">{{ application.applied_at|date:"F j, Y, g:i A" }}</dd>
       </dl>
+      {% if application.receipt_image_1 %}
+      <div class="mb-3">
+        <div class="fw-semibold mb-1" style="font-size:0.875rem;">Receipt #1</div>
+        <a href="{{ application.receipt_image_1.url }}" target="_blank">
+          <img src="{{ application.receipt_image_1.url }}" alt="Receipt 1" style="max-width:300px;border-radius:6px;border:1px solid #dee2e6;">
+        </a>
+      </div>
+      {% endif %}
+      {% if application.receipt_image_2 %}
+      <div class="mb-3">
+        <div class="fw-semibold mb-1" style="font-size:0.875rem;">Receipt #2</div>
+        <a href="{{ application.receipt_image_2.url }}" target="_blank">
+          <img src="{{ application.receipt_image_2.url }}" alt="Receipt 2" style="max-width:300px;border-radius:6px;border:1px solid #dee2e6;">
+        </a>
+      </div>
+      {% endif %}
+      <a href="{% url 'organizer:reservation_list' %}" class="btn btn-outline-secondary btn-sm">← Back to Reservations</a>
     </div>
+    {% endif %}
+
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyGcLink() {
+  var el = document.getElementById('gcLink');
+  if (!el) return;
+  navigator.clipboard.writeText(el.value).then(function() {
+    document.getElementById('gcCopied').classList.remove('d-none');
+    setTimeout(function() { document.getElementById('gcCopied').classList.add('d-none'); }, 3000);
+  });
+}
+</script>
 {% endblock %}

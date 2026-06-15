@@ -12,17 +12,14 @@
       <dl class="row mb-0" style="font-size:0.95rem;">
         <dt class="col-sm-4 text-muted">Username</dt>
         <dd class="col-sm-8 fw-semibold">{{ user.username }}</dd>
-
         <dt class="col-sm-4 text-muted">Email</dt>
         <dd class="col-sm-8">{{ user.email|default:"—" }}</dd>
-
         <dt class="col-sm-4 text-muted">Role</dt>
         <dd class="col-sm-8">
           <span class="ct-badge" style="background:var(--ct-purple);color:#fff;">
             {{ user.get_role_display }}
           </span>
         </dd>
-
         <dt class="col-sm-4 text-muted">Joined</dt>
         <dd class="col-sm-8">{{ user.date_joined|date:"F j, Y" }}</dd>
       </dl>
@@ -34,28 +31,53 @@
   {% include 'partials/merchant_sidebar.html' %}
   <div class="ct-dashboard-main">
     <h4 class="fw-bold mb-3" style="color:var(--ct-purple-dark);">My Profile</h4>
-    <div class="ct-card" style="max-width:480px;">
-      <dl class="row mb-0" style="font-size:0.95rem;">
-        <dt class="col-sm-4 text-muted">Username</dt>
-        <dd class="col-sm-8 fw-semibold">{{ user.username }}</dd>
-
-        <dt class="col-sm-4 text-muted">Name</dt>
-        <dd class="col-sm-8">{{ user.first_name|default:"—" }}</dd>
-
-        <dt class="col-sm-4 text-muted">Email</dt>
-        <dd class="col-sm-8">{{ user.email|default:"—" }}</dd>
-
-        <dt class="col-sm-4 text-muted">Role</dt>
-        <dd class="col-sm-8">
-          <span class="ct-badge" style="background:var(--ct-yellow);color:var(--ct-text);">
-            {{ user.get_role_display }}
-          </span>
-        </dd>
-
-        <dt class="col-sm-4 text-muted">Joined</dt>
-        <dd class="col-sm-8">{{ user.date_joined|date:"F j, Y" }}</dd>
-      </dl>
-    </div>
+    <form method="post" action="{% url 'merchant:profile' %}">
+      {% csrf_token %}
+      <div class="ct-card" style="max-width:520px;">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Username</label>
+          <input type="text" class="form-control" value="{{ user.username }}" disabled>
+          <small class="text-muted">Username cannot be changed.</small>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label fw-semibold">First Name</label>
+            <input type="text" name="first_name" class="form-control" value="{{ user.first_name }}">
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold">Last Name</label>
+            <input type="text" name="last_name" class="form-control" value="{{ user.last_name }}">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Email</label>
+          <input type="email" name="email" class="form-control" value="{{ user.email }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Phone Number</label>
+          <input type="tel" name="phone_number" class="form-control"
+                 value="{{ user.phone_number|default:'' }}"
+                 placeholder="09XXXXXXXXX" maxlength="11"
+                 pattern="09[0-9]{9}" inputmode="numeric"
+                 oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11)">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Facebook Profile / Page</label>
+          <input type="url" name="facebook_url" class="form-control" value="{{ user.facebook_url|default:'' }}" placeholder="https://facebook.com/...">
+        </div>
+        <div class="mb-1 text-muted" style="font-size:0.8rem;">
+          <i class="bi bi-info-circle me-1"></i>
+          Member since {{ user.date_joined|date:"F j, Y" }}
+          &nbsp;·&nbsp;
+          <span class="badge" style="background:var(--ct-yellow);color:var(--ct-text);">{{ user.get_role_display }}</span>
+        </div>
+        <div class="mt-3">
+          <button type="submit" class="btn btn-ct-yellow">
+            <i class="bi bi-floppy me-1"></i>Save Profile
+          </button>
+        </div>
+      </div>
+    </form>
   </div>
 </div>
 {% endif %}

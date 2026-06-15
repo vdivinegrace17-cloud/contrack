@@ -461,3 +461,109 @@ body {
 .auth-remember-row .form-check-input { cursor: pointer; }
 .auth-remember-row a { font-size: 0.82rem; color: #374151; text-decoration: none; }
 .auth-remember-row a:hover { text-decoration: underline; color: #1f2937; }
+
+/* ── Auth page nav links ─────────────────────────────────────────────────── */
+
+.auth-nav-link { color: var(--ct-yellow); text-decoration: underline; font-weight: 500; }
+.auth-nav-link:hover { color: var(--ct-yellow); text-decoration: underline; filter: brightness(0.85); }
+.auth-nav-link-purple { color: var(--ct-purple); text-decoration: underline; font-weight: 500; }
+.auth-nav-link-purple:hover { color: var(--ct-purple-dark); text-decoration: underline; }
+
+/* ── Notification dropdown items ─────────────────────────────────────────── */
+
+.notif-item {
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.notif-item:last-child { border-bottom: none; }
+
+/* ── Grid Builder & Booth Map ─────────────────────────────────────────────── */
+
+.ct-grid-canvas {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols, 20), 40px);
+  grid-template-rows: repeat(var(--grid-rows, 15), 40px);
+  gap: 2px;
+  background: #e9ecef;
+  border-radius: 8px;
+  padding: 8px;
+}
+.ct-grid-cell {
+  background: #f8f9fa;
+  border: 1px dashed #dee2e6;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.ct-grid-cell:hover { background: #e2e8f0; }
+.ct-booth-cell {
+  border-radius: 4px;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  overflow: hidden;
+  transition: filter 0.12s;
+}
+.ct-booth-cell:hover { filter: brightness(0.88); }
+.booth-available   { background: #22c55e; }
+.booth-pending     { background: #f97316; }
+.booth-reserved    { background: #ef4444; }
+.booth-unavailable { background: #9ca3af; }
+
+/* ── Floor Plan Workspace ──────────────────────────────────────────────────── */
+.fp-workspace { display:flex; gap:1rem; min-height:0; }
+.fp-sidebar {
+  width:148px; flex-shrink:0; background:#f8f9fa;
+  border-radius:8px; padding:0.75rem;
+  overflow-y:auto; max-height:calc(100vh - 180px);
+}
+.fp-tool-group { margin-bottom:1rem; }
+.fp-tool-label {
+  font-size:0.68rem; font-weight:700; text-transform:uppercase;
+  color:#6b7280; margin-bottom:0.4rem; letter-spacing:.04em;
+}
+.fp-tool {
+  display:block; width:100%; padding:0.3rem 0.6rem; margin-bottom:0.25rem;
+  background:white; border:1px solid #dee2e6; border-radius:4px;
+  font-size:0.78rem; cursor:pointer; text-align:left; line-height:1.4;
+}
+.fp-tool:hover { background:#e9ecef; }
+.fp-tool.fp-tool-active {
+  background:var(--ct-yellow); border-color:#c9a82a; font-weight:600;
+}
+.fp-canvas-area { flex:1; overflow:hidden; min-width:0; }
+.fp-controls-row {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;
+}
+.fp-grid-size-inputs label { font-size:0.8rem; margin-right:0.3rem; }
+.fp-grid-size-inputs input { width:52px; padding:2px 5px; font-size:0.8rem; display:inline-block; }
+/* Canvas wrapper */
+.fp-canvas-wrap {
+  overflow: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  background: #e5e7eb;
+  max-height: calc(100vh - 210px);
+  line-height: 0;
+}
+#fpCanvas { display: block; cursor: default; }
+/* Context menu */
+#fpContextMenu { position:fixed; z-index:9999; min-width:130px; }
+#fpContextMenu .dropdown-menu { display:block; padding:0.25rem 0; font-size:0.85rem; }
+
+/* ── Print styles ──────────────────────────────────────────────────────────── */
+@media print {
+  .navbar, .ct-sidebar, footer, .no-print, .btn,
+  .modal, .ct-dashboard-wrapper > *:first-child { display: none !important; }
+  .ct-dashboard-wrapper { display: block !important; }
+  .ct-dashboard-main { max-width: 100% !important; padding: 0 !important; }
+  body { background: #fff !important; }
+}

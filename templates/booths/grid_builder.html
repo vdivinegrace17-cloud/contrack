@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Floor Plan Builder — {{ event.title }}{% endblock %}
+
+{% block main %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/organizer_sidebar.html' %}
+  <div class="ct-dashboard-main">
+
+    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+      <a href="{% url 'organizer:event_list' %}" class="text-muted text-decoration-none" style="font-size:0.875rem;">← Events</a>
+      <span class="text-muted">/</span>
+      <h4 class="fw-bold mb-0" style="color:var(--ct-purple-dark);">Floor Plan Builder — {{ event.title }}</h4>
+    </div>
+
+    <details class="mb-3" style="font-size:0.83rem;">
+      <summary class="fw-semibold text-muted" style="cursor:pointer; user-select:none;">How to Use the Floor Plan Builder</summary>
+      <div class="mt-2 ps-1 text-muted" style="line-height:1.7;">
+        <ol class="mb-0 ps-3">
+          <li>Pick a tool from the left sidebar — <strong>Booth</strong>, <strong>Stall</strong>, <strong>Table</strong>, <strong>Kiosk</strong>, or a landmark type.</li>
+          <li>Click a single cell to place a 1×1 item, or <strong>click and drag</strong> across multiple cells to draw a larger area.</li>
+          <li>Fill in the details in the popup (label, price, category, status) and click <strong>Save</strong>.</li>
+          <li>Switch to <strong>Select</strong> (or press <kbd>Esc</kbd>) to drag items around. Click any item to edit it.</li>
+          <li><strong>Right-click</strong> any item for a quick Edit / Delete menu.</li>
+          <li>Press <kbd>Ctrl+Z</kbd> or click <strong>Undo</strong> to reverse the last action (up to 50 steps).</li>
+          <li>Change <strong>Cols</strong> / <strong>Rows</strong> and click <strong>Update Grid</strong> to resize the canvas.</li>
+          <li>Click <strong>Save Layout</strong> (or <kbd>Ctrl+S</kbd>) when done. The yellow <strong>Unsaved</strong> badge disappears on success.</li>
+        </ol>
+      </div>
+    </details>
+
+    <div class="fp-workspace">
+
+      <!-- ── Left Toolbar ──────────────────────────────────────────────── -->
+      <div class="fp-sidebar">
+        <div class="fp-tool-group">
+          <button class="fp-tool fp-tool-active" id="tool-pointer" onclick="selectTool('pointer',null)"><i class="bi bi-cursor me-1"></i>Select</button>
+        </div>
+        <div class="fp-tool-group">
+          <div class="fp-tool-label">Slots</div>
+          <button class="fp-tool" id="tool-booth"  onclick="selectTool('slot','BOOTH')"><i class="bi bi-square me-1"></i>Booth</button>
+          <button class="fp-tool" id="tool-stall"  onclick="selectTool('slot','STALL')"><i class="bi bi-shop me-1"></i>Stall</button>
+          <button class="fp-tool" id="tool-table"  onclick="selectTool('slot','TABLE')"><i class="bi bi-table me-1"></i>Table</button>
+          <button class="fp-tool" id="tool-kiosk"  onclick="selectTool('slot','KIOSK')"><i class="bi bi-pin-map me-1"></i>Kiosk</button>
+        </div>
+        <div class="fp-tool-group">
+          <div class="fp-tool-label">Landmarks</div>
+          <button class="fp-tool" id="tool-entrance"       onclick="selectTool('landmark','entrance')"><i class="bi bi-door-open me-1"></i>Entrance</button>
+          <button class="fp-tool" id="tool-exit"           onclick="selectTool('landmark','exit')"><i class="bi bi-box-arrow-right me-1"></i>Exit</button>
+          <button class="fp-tool" id="tool-stage"          onclick="selectTool('landmark','stage')"><i class="bi bi-music-note-beamed me-1"></i>Stage</button>
+          <button class="fp-tool" id="tool-restroom"       onclick="selectTool('landmark','restroom')"><i class="bi bi-gender-ambiguous me-1"></i>Restroom</button>
+          <button class="fp-tool" id="tool-food_court"     onclick="selectTool('landmark','food_court')"><i class="bi bi-cup-straw me-1"></i>Food Court</button>
+          <button class="fp-tool" id="tool-emergency_exit" onclick="selectTool('landmark','emergency_exit')"><i class="bi bi-exclamation-triangle me-1"></i>Emerg. Exit</button>
+          <button class="fp-tool" id="tool-info_desk"      onclick="selectTool('landmark','info_desk')"><i class="bi bi-info-circle me-1"></i>Info Desk</button>
+          <button class="fp-tool" id="tool-parking"        onclick="selectTool('landmark','parking')"><i class="bi bi-p-circle me-1"></i>Parking</button>
+          <button class="fp-tool" id="tool-custom"         onclick="selectTool('landmark','custom')"><i class="bi bi-tag me-1"></i>Custom</button>
+        </div>
+      </div>
+
+      <!-- ── Canvas Area ───────────────────────────────────────────────── -->
+      <div class="fp-canvas-area">
+
+        <div class="fp-controls-row">
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <span class="text-muted" style="font-size:0.8rem;">Pick a tool, then click or drag on the grid. <kbd>Esc</kbd> = Select. <kbd>Ctrl+Z</kbd> = Undo.</span>
+            <div class="fp-grid-size-inputs d-flex align-items-center gap-2">
+              <label for="fp-cols" class="mb-0">Cols</label>
+              <input type="number" id="fp-cols" class="form-control form-control-sm" value="{{ grid_cols }}" min="5" max="60">
+              <label for="fp-rows" class="mb-0">Rows</label>
+              <input type="number" id="fp-rows" class="form-control form-control-sm" value="{{ grid_rows }}" min="5" max="40">
+              <button class="btn btn-outline-secondary btn-sm" onclick="updateGridSize()">Update Grid</button>
+            </div>
+          </div>
+          <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-outline-secondary btn-sm" onclick="undoLast()" title="Undo (Ctrl+Z)"><i class="bi bi-arrow-counterclockwise"></i> Undo</button>
+            <button class="btn btn-outline-danger btn-sm" onclick="clearAll()"><i class="bi bi-trash me-1"></i>Clear All</button>
+            <button class="btn btn-ct-yellow btn-sm" id="btnSave" onclick="saveLayout()"><i class="bi bi-floppy me-1"></i>Save Layout</button>
+            <span id="fpUnsavedBadge" class="badge bg-warning text-dark d-none">Unsaved</span>
+          </div>
+        </div>
+
+        <div class="fp-canvas-wrap" id="fpCanvasWrap">
+          <canvas id="fpCanvas" width="960" height="600"></canvas>
+        </div>
+
+      </div>
+    </div><!-- /.fp-workspace -->
+
+  </div>
+</div>
+
+<!-- ── Item Modal ──────────────────────────────────────────────────────── -->
+<div class="modal fade" id="fpItemModal" tabindex="-1" aria-labelledby="fpItemModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="fpItemModalLabel">Add Item</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="fpItemError" class="alert alert-danger d-none"></div>
+
+        <!-- Slot fields -->
+        <div id="fpSlotFields">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Label</label>
+            <input type="text" id="fp_label" class="form-control" placeholder="e.g. A1, Row-3 Table">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col">
+              <label class="form-label fw-semibold">Type</label>
+              <select id="fp_slot_type" class="form-select">
+                <option value="BOOTH">Booth</option>
+                <option value="STALL">Stall</option>
+                <option value="TABLE">Table</option>
+                <option value="KIOSK">Kiosk</option>
+              </select>
+            </div>
+            <div class="col">
+              <label class="form-label fw-semibold">Category</label>
+              <select id="fp_category" class="form-select">
+                <option value="FOOD">Food &amp; Beverage</option>
+                <option value="MERCH">Merchandise</option>
+                <option value="ARTS">Arts &amp; Crafts</option>
+                <option value="SERV">Services</option>
+                <option value="COLL">Collectibles</option>
+                <option value="OTHER" selected>Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col">
+              <label class="form-label fw-semibold">Price (₱)</label>
+              <input type="number" id="fp_price" class="form-control" value="0" min="0" step="0.01">
+            </div>
+            <div class="col">
+              <label class="form-label fw-semibold">Status</label>
+              <select id="fp_status" class="form-select">
+                <option value="AVAILABLE" selected>Available</option>
+                <option value="PENDING">Pending</option>
+                <option value="RESERVED">Reserved</option>
+                <option value="UNAVAILABLE">Unavailable</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Description</label>
+            <textarea id="fp_description" class="form-control" rows="2" placeholder="Optional details…"></textarea>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold">Size</label>
+            <input type="text" id="fp_size_display" class="form-control" readonly>
+          </div>
+        </div>
+
+        <!-- Landmark fields -->
+        <div id="fpLandmarkFields" class="d-none">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Label</label>
+            <input type="text" id="fp_lm_label" class="form-control" placeholder="e.g. Main Entrance">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Type</label>
+            <select id="fp_lm_type" class="form-select" onchange="onLmTypeChange()">
+              <option value="entrance">Entrance</option>
+              <option value="exit">Exit</option>
+              <option value="stage">Stage</option>
+              <option value="restroom">Restroom</option>
+              <option value="food_court">Food Court</option>
+              <option value="emergency_exit">Emergency Exit</option>
+              <option value="info_desk">Info Desk</option>
+              <option value="parking">Parking</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div id="fp_lm_color_row" class="mb-3 d-none">
+            <label class="form-label fw-semibold">Custom Color</label>
+            <input type="color" id="fp_lm_color" class="form-control form-control-color" value="#374151">
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold">Size</label>
+            <input type="text" id="fp_lm_size_display" class="form-control" readonly>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer justify-content-between">
+        <button type="button" class="btn btn-outline-danger d-none" id="fpDeleteBtn" onclick="deleteCurrentItem()">Delete</button>
+        <div>
+          <button type="button" class="btn btn-outline-secondary me-1" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-ct-yellow" onclick="saveModalItem()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Context Menu ────────────────────────────────────────────────────── -->
+<div id="fpContextMenu" class="d-none">
+  <ul class="dropdown-menu">
+    <li><a class="dropdown-item" href="#" onclick="ctxEdit();return false;"><i class="bi bi-pencil me-2"></i>Edit</a></li>
+    <li><a class="dropdown-item text-danger" href="#" onclick="ctxDelete();return false;"><i class="bi bi-trash me-2"></i>Delete</a></li>
+  </ul>
+</div>
+
+<!-- ── Reserved Booth Info Modal ────────────────────────────────────────── -->
+<div class="modal fade" id="fpReservedModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#fef2f2;border-bottom:2px solid #ef4444;">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-lock-fill me-2" style="color:#ef4444;"></i>
+          <span id="ri_header_label">Booth Reserved</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="ct-card p-3 mb-3" style="background:#faf9ff;">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <div>
+              <div class="fw-bold" id="ri_booth_label"></div>
+              <div class="text-muted" style="font-size:0.8rem;" id="ri_booth_type"></div>
+            </div>
+            <span id="ri_booth_status" class="badge"></span>
+          </div>
+          <div class="fw-bold mt-1" style="color:var(--ct-purple-dark);" id="ri_booth_price"></div>
+        </div>
+        <div id="ri_merchant_section">
+          <div class="text-muted" style="font-size:0.85rem;">Loading reservation info…</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <a href="#" id="ri_view_btn" class="btn btn-ct-purple btn-sm d-none">
+          <i class="bi bi-clipboard-check me-1"></i>View Full Reservation
+        </a>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const LAYOUT_DATA        = {{ layout_json|safe }};
+const LAYOUT_URL         = "{% url 'organizer:get_layout' event.slug %}";
+const SAVE_URL           = "{% url 'organizer:save_layout' event.slug %}";
+const DELETE_URL         = "{% url 'organizer:delete_layout_item' event.slug 0 %}".replace('/0/', '/');
+const CLEAR_URL          = "{% url 'organizer:clear_booths' event.slug %}";
+const POLL_URL           = "{% url 'organizer:manage_booths' event.slug %}";
+const BOOTH_INFO_URL     = "{% url 'organizer:booth_reservation_info' 0 %}";
+const APP_DETAIL_URL     = "{% url 'organizer:application_detail' 0 %}";
+const EVENT_SLUG         = "{{ event.slug }}";
+let FP_COLS = {{ grid_cols }};
+let FP_ROWS = {{ grid_rows }};
+</script>
+<script src="{% static 'js/grid_builder.js' %}"></script>
+{% endblock %}

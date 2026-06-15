@@ -7,10 +7,9 @@ from django.views.decorators.http import require_http_methods
 
 from apps.events.models import Event
 from apps.reservations.models import Application
-from apps.payments.models import Payment
 from .decorators import organizer_required, merchant_required
 from .models import User
-from .forms import ConTrackLoginForm, MerchantRegistrationForm
+from .forms import ConTrackLoginForm, MerchantRegistrationForm, validate_ph_phone
 
 
 # ── Public / Auth ─────────────────────────────────────────────────────────────
@@ -92,16 +91,12 @@ def dashboard_redirect(request):
 @organizer_required
 def organizer_dashboard(request):
     context = {
-        'total_merchants':  User.objects.filter(role=User.Role.MERCHANT).count(),
-        'active_events':    Event.objects.filter(status='OPEN').count(),
-        'pending_apps':     Application.objects.filter(status='PENDING').count(),
-        'pending_payments': Payment.objects.filter(status='PENDING').count(),
-        'recent_apps':      Application.objects.select_related(
-                                'merchant', 'event', 'booth'
-                            ).order_by('-applied_at')[:5],
-        'recent_payments':  Payment.objects.select_related(
-                                'application__merchant', 'application__event'
-                            ).order_by('-submitted_at')[:5],
+        'total_merchants': User.objects.filter(role=User.Role.MERCHANT).count(),
+        'active_events':   Event.objects.filter(status='OPEN').count(),
+        'pending_apps':    Application.objects.filter(status='PENDING').count(),
+        'recent_apps':     Application.objects.select_related(
+                               'merchant', 'event', 'booth'
+                           ).order_by('-applied_at')[:5],
     }
     return render(request, 'organizer/dashboard.html', context)
 
@@ -152,4 +147,20 @@ def merchant_dashboard(request):
 
 @merchant_required
 def merchant_profile_view(request):
+    if request.method == 'POST':
+        u = request.user
+        phone = request.POST.get('phone_number', getattr(u, 'phone_number', '')).strip()
+        try:
+            validate_ph_phone(phone)
+        except Exception:
+            messages.error(request, 'Enter a valid Philippine mobile number (e.g., 09171234567).')
+            return render(request, 'accounts/profile.html', {'user': request.user})
+        u.first_name    = request.POST.get('first_name', u.first_name).strip()
+        u.last_name     = request.POST.get('last_name', u.last_name).strip()
+        u.email         = request.POST.get('email', u.email).strip()
+        u.phone_number  = phone
+        u.facebook_url  = request.POST.get('facebook_url', getattr(u, 'facebook_url', '')).strip()
+        u.save(update_fields=['first_name', 'last_name', 'email', 'phone_number', 'facebook_url'])
+        messages.success(request, 'Profile updated.')
+        return redirect('merchant:profile')
     return render(request, 'accounts/profile.html', {'user': request.user})

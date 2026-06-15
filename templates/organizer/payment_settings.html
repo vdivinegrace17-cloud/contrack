@@ -1,0 +1,387 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Payment Settings{% endblock %}
+
+{% block main %}
+<div class="ct-dashboard-wrapper">
+  {% include 'partials/organizer_sidebar.html' %}
+  <div class="ct-dashboard-main">
+
+    <div class="d-flex align-items-center gap-2 mb-4">
+      <h4 class="fw-bold mb-0" style="color:var(--ct-purple-dark);">
+        <i class="bi bi-gear me-2"></i>Payment Settings
+      </h4>
+    </div>
+
+    <!-- ── A: Payment Methods ─────────────────────────────────────────── -->
+    <div class="ct-card mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-bold mb-0" style="color:var(--ct-purple-dark);">
+          <i class="bi bi-credit-card me-2"></i>Payment Methods
+        </h5>
+        <button class="btn btn-ct-yellow btn-sm" data-bs-toggle="modal" data-bs-target="#addMethodModal">
+          <i class="bi bi-plus me-1"></i>Add Method
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="methodsTable">
+          <thead class="table-light">
+            <tr>
+              <th>Name</th>
+              <th>Account Name</th>
+              <th>Account / Number</th>
+              <th>QR Code</th>
+              <th>Active</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in methods %}
+            <tr id="method-row-{{ m.id }}" data-id="{{ m.id }}">
+              <td class="fw-semibold">{{ m.name }}</td>
+              <td>{{ m.account_name|default:"—" }}</td>
+              <td>{{ m.account_number|default:"—" }}</td>
+              <td>
+                {% if m.qr_code %}
+                  <img src="{{ m.qr_code.url }}" alt="QR" style="width:44px;height:44px;object-fit:cover;border-radius:4px;cursor:pointer;"
+                       onclick="window.open('{{ m.qr_code.url }}','_blank')">
+                {% else %}
+                  <span class="text-muted" style="font-size:0.8rem;">No QR</span>
+                {% endif %}
+              </td>
+              <td>
+                <button class="btn btn-sm {% if m.is_active %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                        onclick="toggleMethod({{ m.id }}, this)">
+                  {% if m.is_active %}Active{% else %}Inactive{% endif %}
+                </button>
+              </td>
+              <td>
+                <button class="btn btn-outline-secondary btn-sm me-1"
+                        onclick="openEditMethod({{ m.id }}, '{{ m.name|escapejs }}', '{{ m.account_name|escapejs }}', '{{ m.account_number|escapejs }}')">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-outline-danger btn-sm" onclick="deleteMethod({{ m.id }})">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr id="emptyRow"><td colspan="6" class="text-center text-muted py-3">No payment methods yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── B+C+D: Settings Form ───────────────────────────────────────── -->
+    <form id="settingsForm" novalidate>
+      {% csrf_token %}
+
+      <!-- B: Payment Terms -->
+      <div class="ct-card mb-4">
+        <h5 class="fw-bold mb-3" style="color:var(--ct-purple-dark);">
+          <i class="bi bi-receipt me-2"></i>Payment Terms
+        </h5>
+        <div class="row g-3">
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-semibold">Payment Option</label>
+            <select name="payment_option" id="paymentOption" class="form-select" onchange="toggleDeadlineField()">
+              <option value="full_only" {% if ps.payment_option == 'full_only' %}selected{% endif %}>Full Payment Only</option>
+              <option value="half_half" {% if ps.payment_option == 'half_half' %}selected{% endif %}>50/50 — Half Now, Half Later</option>
+              <option value="both"      {% if ps.payment_option == 'both' %}selected{% endif %}>Both Options Available</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-4" id="deadlineDaysWrapper" style="{% if ps.payment_option == 'full_only' %}display:none{% endif %}">
+            <label class="form-label fw-semibold">2nd Payment Deadline (days before event)</label>
+            <input type="number" name="second_payment_deadline_days" class="form-control"
+                   value="{{ ps.second_payment_deadline_days|default:'' }}" min="1" placeholder="e.g. 14">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-semibold">Reservation Expiry (hours)</label>
+            <input type="number" name="reservation_expiry_hours" class="form-control"
+                   value="{{ ps.reservation_expiry_hours }}" min="1" placeholder="24">
+            <small class="text-muted">Slot is auto-released if no receipt uploaded within this time.</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- C: Terms & Conditions -->
+      <div class="ct-card mb-4">
+        <h5 class="fw-bold mb-3" style="color:var(--ct-purple-dark);">
+          <i class="bi bi-file-text me-2"></i>Terms &amp; Conditions
+        </h5>
+        <textarea name="terms_and_conditions" class="form-control" rows="12"
+                  placeholder="Enter your terms and conditions…">{{ ps.terms_and_conditions }}</textarea>
+      </div>
+
+      <!-- D: Organizer Contact Info -->
+      <div class="ct-card mb-4">
+        <h5 class="fw-bold mb-3" style="color:var(--ct-purple-dark);">
+          <i class="bi bi-person-lines-fill me-2"></i>Organizer Contact Info
+        </h5>
+        <p class="text-muted mb-3" style="font-size:0.85rem;">
+          These details are shown to merchants only after their reservation is approved.
+        </p>
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold">Contact Person Name</label>
+            <input type="text" name="organizer_name" class="form-control" value="{{ ps.organizer_name }}" placeholder="Full name">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold">Phone Number</label>
+            <input type="tel" name="organizer_phone" class="form-control"
+                   value="{{ ps.organizer_phone }}" placeholder="09XXXXXXXXX"
+                   maxlength="11" pattern="09[0-9]{9}" inputmode="numeric"
+                   oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11)">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold">Email Address</label>
+            <input type="email" name="organizer_email" class="form-control" value="{{ ps.organizer_email }}" placeholder="organizer@email.com">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label fw-semibold">Facebook Page / Profile Link</label>
+            <input type="url" name="organizer_facebook" class="form-control" value="{{ ps.organizer_facebook }}" placeholder="https://facebook.com/...">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">GC Messenger Link <small class="text-muted">(Event Group Chat)</small></label>
+            <input type="url" name="gc_messenger_link" class="form-control" value="{{ ps.gc_messenger_link }}" placeholder="https://m.me/g/...">
+            <small class="text-muted">Merchants will see this link and can join the event group chat after approval.</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-end mb-4">
+        <button type="submit" class="btn btn-ct-yellow px-4">
+          <i class="bi bi-floppy me-1"></i>Save All Settings
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<!-- ── Add Method Modal ─────────────────────────────────────────────────── -->
+<div class="modal fade" id="addMethodModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Add Payment Method</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="addMethodError" class="alert alert-danger d-none"></div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Method Name <span class="text-danger">*</span></label>
+          <input type="text" id="add_name" class="form-control" placeholder="e.g. BPI Bank, PayMongo, Cash">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Account Name</label>
+          <input type="text" id="add_account_name" class="form-control" placeholder="Registered account name">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Account Number / Phone</label>
+          <input type="text" id="add_account_number" class="form-control" placeholder="09XX XXX XXXX">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">QR Code Image <span class="text-muted">(optional)</span></label>
+          <input type="file" id="add_qr_code" class="form-control" accept="image/*">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-ct-yellow" onclick="submitAddMethod()">Add Method</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit Method Modal ────────────────────────────────────────────────── -->
+<div class="modal fade" id="editMethodModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Edit Payment Method</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit_id">
+        <div id="editMethodError" class="alert alert-danger d-none"></div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Method Name <span class="text-danger">*</span></label>
+          <input type="text" id="edit_name" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Account Name</label>
+          <input type="text" id="edit_account_name" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Account Number / Phone</label>
+          <input type="text" id="edit_account_number" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">QR Code Image <span class="text-muted">(replace — optional)</span></label>
+          <input type="file" id="edit_qr_code" class="form-control" accept="image/*">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-ct-yellow" onclick="submitEditMethod()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = "{{ csrf_token }}";
+const CREATE_URL = "{% url 'organizer:payment_method_create' %}";
+const DELETE_URL_BASE = "/organizer/payment-methods/";
+const SETTINGS_URL = "{% url 'organizer:payment_settings' %}";
+
+function toggleDeadlineField() {
+  var v = document.getElementById('paymentOption').value;
+  document.getElementById('deadlineDaysWrapper').style.display = (v === 'full_only') ? 'none' : '';
+}
+
+// ── Settings Save ─────────────────────────────────────────────────────────
+document.getElementById('settingsForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var fd = new FormData(this);
+  fetch(SETTINGS_URL, {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+    body: fd,
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) { showToast('Settings saved!', 'success'); }
+    else { showToast(d.error || 'Save failed.', 'danger'); }
+  })
+  .catch(function() { showToast('Network error.', 'danger'); });
+});
+
+// ── Add Method ────────────────────────────────────────────────────────────
+function submitAddMethod() {
+  var err = document.getElementById('addMethodError');
+  err.classList.add('d-none');
+  var name = document.getElementById('add_name').value.trim();
+  if (!name) { err.textContent = 'Method name is required.'; err.classList.remove('d-none'); return; }
+  var fd = new FormData();
+  fd.append('name',           name);
+  fd.append('account_name',   document.getElementById('add_account_name').value.trim());
+  fd.append('account_number', document.getElementById('add_account_number').value.trim());
+  var qr = document.getElementById('add_qr_code').files[0];
+  if (qr) fd.append('qr_code', qr);
+  fetch(CREATE_URL, {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+    body: fd,
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      bootstrap.Modal.getInstance(document.getElementById('addMethodModal')).hide();
+      appendMethodRow(d.method);
+      showToast('Payment method added!', 'success');
+      document.getElementById('emptyRow') && document.getElementById('emptyRow').remove();
+    } else { err.textContent = d.error; err.classList.remove('d-none'); }
+  });
+}
+
+function appendMethodRow(m) {
+  var tbody = document.querySelector('#methodsTable tbody');
+  var tr = document.createElement('tr');
+  tr.id = 'method-row-' + m.id;
+  tr.setAttribute('data-id', m.id);
+  tr.innerHTML =
+    '<td class="fw-semibold">' + m.name + '</td>' +
+    '<td>' + (m.account_name || '—') + '</td>' +
+    '<td>' + (m.account_number || '—') + '</td>' +
+    '<td>' + (m.qr_code_url ? '<img src="' + m.qr_code_url + '" style="width:44px;height:44px;object-fit:cover;border-radius:4px;cursor:pointer;" onclick="window.open(\'' + m.qr_code_url + '\',\'_blank\')">' : '<span class="text-muted" style="font-size:0.8rem;">No QR</span>') + '</td>' +
+    '<td><button class="btn btn-sm btn-success" onclick="toggleMethod(' + m.id + ', this)">Active</button></td>' +
+    '<td>' +
+      '<button class="btn btn-outline-secondary btn-sm me-1" onclick="openEditMethod(' + m.id + ',\'' + (m.name||'') + '\',\'' + (m.account_name||'') + '\',\'' + (m.account_number||'') + '\')"><i class="bi bi-pencil"></i></button>' +
+      '<button class="btn btn-outline-danger btn-sm" onclick="deleteMethod(' + m.id + ')"><i class="bi bi-trash"></i></button>' +
+    '</td>';
+  tbody.appendChild(tr);
+}
+
+// ── Edit Method ───────────────────────────────────────────────────────────
+function openEditMethod(id, name, acctName, acctNum) {
+  document.getElementById('edit_id').value = id;
+  document.getElementById('edit_name').value = name;
+  document.getElementById('edit_account_name').value = acctName;
+  document.getElementById('edit_account_number').value = acctNum;
+  document.getElementById('edit_qr_code').value = '';
+  document.getElementById('editMethodError').classList.add('d-none');
+  new bootstrap.Modal(document.getElementById('editMethodModal')).show();
+}
+
+function submitEditMethod() {
+  var id  = document.getElementById('edit_id').value;
+  var err = document.getElementById('editMethodError');
+  err.classList.add('d-none');
+  var fd = new FormData();
+  fd.append('name',           document.getElementById('edit_name').value.trim());
+  fd.append('account_name',   document.getElementById('edit_account_name').value.trim());
+  fd.append('account_number', document.getElementById('edit_account_number').value.trim());
+  var qr = document.getElementById('edit_qr_code').files[0];
+  if (qr) fd.append('qr_code', qr);
+  fetch('/organizer/payment-methods/' + id + '/edit/', {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+    body: fd,
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      bootstrap.Modal.getInstance(document.getElementById('editMethodModal')).hide();
+      var row = document.getElementById('method-row-' + id);
+      if (row) {
+        row.cells[0].textContent = d.method.name;
+        row.cells[1].textContent = d.method.account_name || '—';
+        row.cells[2].textContent = d.method.account_number || '—';
+        if (d.method.qr_code_url) {
+          row.cells[3].innerHTML = '<img src="' + d.method.qr_code_url + '" style="width:44px;height:44px;object-fit:cover;border-radius:4px;">';
+        }
+      }
+      showToast('Method updated!', 'success');
+    } else { err.textContent = d.error; err.classList.remove('d-none'); }
+  });
+}
+
+// ── Delete Method ─────────────────────────────────────────────────────────
+function deleteMethod(id) {
+  if (!confirm('Delete this payment method?')) return;
+  fetch('/organizer/payment-methods/' + id + '/delete/', {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      var row = document.getElementById('method-row-' + id);
+      if (row) row.remove();
+      showToast('Method deleted.', 'success');
+    }
+  });
+}
+
+// ── Toggle Active ─────────────────────────────────────────────────────────
+function toggleMethod(id, btn) {
+  fetch('/organizer/payment-methods/' + id + '/toggle/', {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      btn.textContent    = d.is_active ? 'Active' : 'Inactive';
+      btn.className = 'btn btn-sm ' + (d.is_active ? 'btn-success' : 'btn-outline-secondary');
+    }
+  });
+}
+</script>
+{% endblock %}

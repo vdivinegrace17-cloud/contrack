@@ -6,59 +6,521 @@
   {% include 'partials/organizer_sidebar.html' %}
 
   <div class="ct-dashboard-main">
-    <h4 class="fw-bold mb-3" style="color:var(--ct-purple-dark);">Reservations</h4>
 
-    <form method="get" class="d-flex gap-2 mb-3 flex-wrap">
-      <select name="status" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
-        <option value="">All Statuses</option>
-        {% for val, label in status_choices %}
-        <option value="{{ val }}" {% if status == val %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-      <div class="d-flex gap-1">
-        <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Merchant or event…" style="width:200px;">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+      <h4 class="fw-bold mb-0" style="color:var(--ct-purple-dark);">
+        <i class="bi bi-clipboard-check me-2"></i>Reservations
+      </h4>
+      <form method="get" class="d-flex gap-1">
+        <input type="hidden" name="status" value="{{ status }}">
+        <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Merchant, booth, event…" style="width:220px;">
         <button type="submit" class="btn btn-ct-purple btn-sm">Search</button>
         {% if status or q %}<a href="{% url 'organizer:reservation_list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>{% endif %}
-      </div>
-    </form>
+      </form>
+    </div>
 
-    <div class="ct-card">
-      {% if applications %}
-      <table class="ct-table table table-sm mb-0">
-        <thead>
-          <tr>
-            <th>Merchant</th>
-            <th>Event</th>
-            <th>Booth</th>
-            <th>Applied</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for app in applications %}
-          <tr>
-            <td>{{ app.merchant.username }}</td>
-            <td>{{ app.event.title|truncatechars:30 }}</td>
-            <td>{{ app.booth.display_name }}</td>
-            <td>{{ app.applied_at|date:"M d, Y" }}</td>
-            <td><span class="ct-badge ct-badge-{{ app.status|lower }}">{{ app.get_status_display }}</span></td>
-            <td>
-              {% if app.status == 'PENDING' %}
-              <a href="{% url 'organizer:approve_application' app.pk %}" class="btn btn-sm btn-outline-success me-1">Approve</a>
-              <a href="{% url 'organizer:reject_application' app.pk %}" class="btn btn-sm btn-outline-danger">Reject</a>
-              {% else %}
-              <a href="{% url 'organizer:application_detail' app.pk %}" class="btn btn-sm btn-outline-secondary">View</a>
+    <!-- Status filter tabs -->
+    <ul class="nav nav-tabs mb-3" style="font-size:0.875rem;">
+      <li class="nav-item">
+        <a class="nav-link {% if not status %}active{% endif %}"
+           href="{% url 'organizer:reservation_list' %}{% if q %}?q={{ q }}{% endif %}">All</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if status == 'PENDING' %}active{% endif %}"
+           href="?status=PENDING{% if q %}&q={{ q }}{% endif %}">Pending</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if status == 'APPROVED' %}active{% endif %}"
+           href="?status=APPROVED{% if q %}&q={{ q }}{% endif %}">Approved</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if status == 'DENIED' %}active{% endif %}"
+           href="?status=DENIED{% if q %}&q={{ q }}{% endif %}">Denied</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if status == 'CANCELLED' %}active{% endif %}"
+           href="?status=CANCELLED{% if q %}&q={{ q }}{% endif %}">Cancelled</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if status == 'COMPLETED' %}active{% endif %}"
+           href="?status=COMPLETED{% if q %}&q={{ q }}{% endif %}">Completed</a>
+      </li>
+    </ul>
+
+    <div class="ct-card p-0">
+      {% if page_obj.object_list %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:0.875rem;">
+          <thead class="table-light">
+            <tr>
+              <th>Merchant</th>
+              <th>Event</th>
+              <th>Booth</th>
+              <th>Option</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Submitted</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for app in page_obj %}
+            <tr id="res-row-{{ app.pk }}" {% if app.is_disabled %}style="opacity:0.5;"{% endif %}>
+              <td>
+                <div class="fw-semibold">{{ app.merchant_name|default:app.merchant.username }}</div>
+                <div class="text-muted" style="font-size:0.78rem;">{{ app.merchant.username }}</div>
+                {% if app.is_disabled %}<span class="badge bg-dark" style="font-size:0.7rem;">Disabled</span>{% endif %}
+              </td>
+              <td>{{ app.event.title|truncatechars:28 }}</td>
+              <td>{{ app.booth.display_name }}</td>
+              <td>
+                {% if app.payment_option_chosen == 'half' %}
+                  <span class="badge bg-info text-dark">50/50</span>
+                {% else %}
+                  <span class="badge bg-secondary">Full</span>
+                {% endif %}
+              </td>
+              <td>₱{{ app.first_payment_amount|floatformat:2 }}</td>
+              <td>
+                <span class="badge res-status-badge" id="badge-{{ app.pk }}"
+                      style="{% if app.status == 'PENDING' %}background:#f59e0b;color:#1a1a1a;
+                             {% elif app.status == 'APPROVED' %}background:#22c55e;
+                             {% elif app.status == 'DENIED' or app.status == 'REJECTED' %}background:#ef4444;
+                             {% elif app.status == 'COMPLETED' %}background:#0ea5e9;
+                             {% else %}background:#9ca3af;{% endif %}">
+                  {{ app.get_status_display }}
+                </span>
+              </td>
+              <td>{{ app.applied_at|date:"M d, Y" }}</td>
+              <td>
+                <button class="btn btn-sm btn-ct-purple"
+                        onclick="openReviewModal({{ app.pk }})">
+                  Review
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      {% if page_obj.has_other_pages %}
+      <div class="d-flex justify-content-center py-3">
+        <nav>
+          <ul class="pagination pagination-sm mb-0">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if status %}&status={{ status }}{% endif %}{% if q %}&q={{ q }}{% endif %}">«</a></li>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+              {% if page_obj.number == num %}
+              <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+              {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+              <li class="page-item"><a class="page-link" href="?page={{ num }}{% if status %}&status={{ status }}{% endif %}{% if q %}&q={{ q }}{% endif %}">{{ num }}</a></li>
               {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <p class="text-muted mb-0">No reservations found.</p>
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% if status %}&status={{ status }}{% endif %}{% if q %}&q={{ q }}{% endif %}">»</a></li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
       {% endif %}
+
+      {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-inbox text-muted" style="font-size:2.5rem;"></i>
+        <p class="text-muted mt-2 mb-0">No reservations found{% if status or q %} for the current filter{% endif %}.</p>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Review Modal ──────────────────────────────────────────────────────── -->
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title fw-bold">
+            <i class="bi bi-clipboard-check me-2"></i>Reservation Review
+            <span id="rm_app_id" class="text-muted" style="font-size:0.8rem;"></span>
+          </h5>
+          <small class="text-muted">All status changes are reversible.</small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="rmError" class="alert alert-danger d-none"></div>
+        <div id="rmLoading" class="text-center py-4">
+          <div class="spinner-border text-secondary" role="status"></div>
+        </div>
+        <div id="rmContent" class="d-none">
+          <div class="row g-3">
+
+            <!-- Left column: merchant + reservation info + actions -->
+            <div class="col-12 col-md-6">
+              <div class="ct-card p-3 mb-3">
+                <div class="fw-bold mb-2" style="color:var(--ct-purple-dark);">Merchant</div>
+                <div class="fw-semibold" id="rm_merchant_name"></div>
+                <div id="rm_merchant_phone" class="text-muted" style="font-size:0.85rem;"></div>
+                <div id="rm_merchant_email" class="text-muted" style="font-size:0.85rem;"></div>
+                <div id="rm_merchant_facebook" class="text-muted" style="font-size:0.85rem;"></div>
+              </div>
+
+              <div class="ct-card p-3 mb-3">
+                <div class="fw-bold mb-2" style="color:var(--ct-purple-dark);">Reservation</div>
+                <div class="d-flex flex-column gap-1" style="font-size:0.875rem;">
+                  <div><span class="text-muted">Event:</span> <span id="rm_event"></span></div>
+                  <div><span class="text-muted">Booth:</span> <span id="rm_booth"></span></div>
+                  <div><span class="text-muted">Price:</span> ₱<span id="rm_price"></span></div>
+                  <div><span class="text-muted">Payment:</span>
+                    <span id="rm_pay_option" class="badge bg-secondary ms-1"></span>
+                    <span id="rm_pay_status" class="badge bg-info text-dark ms-1"></span>
+                  </div>
+                  <div><span class="text-muted">1st Payment:</span> ₱<span id="rm_first_amt"></span></div>
+                  <div id="rm_second_pay_row" class="d-none">
+                    <span class="text-muted">2nd Payment:</span> ₱<span id="rm_second_amt"></span>
+                    &nbsp;due <span id="rm_deadline"></span>
+                  </div>
+                  <div><span class="text-muted">Applied:</span> <span id="rm_applied_at"></span></div>
+                  <div id="rm_confirmed_row" class="d-none">
+                    <span class="text-muted">Confirmed:</span> <span id="rm_confirmed_at"></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Note to merchant -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold" style="font-size:0.875rem;">Note to Merchant <span class="text-muted">(optional)</span></label>
+                <textarea id="rm_admin_notes" class="form-control" rows="2" style="font-size:0.875rem;"
+                          placeholder="Instructions, reason for denial, etc."></textarea>
+              </div>
+
+              <!-- Quick actions (context-sensitive) -->
+              <div class="ct-card p-3 mb-3">
+                <div class="fw-bold mb-2" style="color:var(--ct-purple-dark);font-size:0.875rem;">Quick Actions</div>
+                <div class="d-flex gap-2 flex-wrap" id="rm_quick_actions">
+                  <button class="btn btn-success btn-sm" id="btn_approve" onclick="approveReservation()">
+                    <i class="bi bi-check-circle me-1"></i>Approve
+                  </button>
+                  <button class="btn btn-danger btn-sm" id="btn_deny" onclick="denyReservation()">
+                    <i class="bi bi-x-circle me-1"></i>Deny
+                  </button>
+                  <button class="btn btn-ct-yellow btn-sm" id="btn_resubmit" onclick="requestResubmit()">
+                    <i class="bi bi-arrow-repeat me-1"></i>Request Resubmit
+                  </button>
+                </div>
+              </div>
+
+              <!-- Change status (always visible) -->
+              <div class="ct-card p-3 mb-3">
+                <div class="fw-bold mb-2" style="color:var(--ct-purple-dark);font-size:0.875rem;">
+                  <i class="bi bi-arrow-repeat me-1"></i>Change Status
+                </div>
+                <div class="d-flex gap-2 flex-wrap align-items-end">
+                  <div>
+                    <label class="form-label mb-1" style="font-size:0.8rem;">New Status</label>
+                    <select id="rm_new_status" class="form-select form-select-sm" style="min-width:160px;">
+                      <option value="PENDING">Pending</option>
+                      <option value="APPROVED">Approved</option>
+                      <option value="DENIED">Denied</option>
+                      <option value="CANCELLED">Cancelled</option>
+                      <option value="COMPLETED">Completed</option>
+                    </select>
+                  </div>
+                  <button class="btn btn-ct-purple btn-sm" onclick="changeStatus()">
+                    <i class="bi bi-floppy me-1"></i>Save Status
+                  </button>
+                </div>
+              </div>
+
+              <!-- Second payment (APPROVED + half) -->
+              <div id="rm_second_payment_section" class="d-none ct-card p-3">
+                <div class="fw-bold mb-2" style="color:var(--ct-purple-dark);font-size:0.875rem;">Second Payment</div>
+                <div id="rm_receipt2_status" class="mb-2 text-muted" style="font-size:0.8rem;"></div>
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                  <button class="btn btn-sm btn-success" id="btn_approve_second" onclick="approveSecondPayment()">
+                    <i class="bi bi-check-circle me-1"></i>Approve 2nd Payment
+                  </button>
+                  <div class="d-flex gap-1 align-items-center">
+                    <input type="date" id="rm_new_deadline" class="form-control form-control-sm" style="width:150px;">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="extendDeadline()">Extend Deadline</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right column: receipts -->
+            <div class="col-12 col-md-6">
+              <div class="ct-card p-3 mb-3">
+                <div class="fw-bold mb-2" style="color:var(--ct-purple-dark);">Payment Receipt #1</div>
+                <div id="rm_receipt1_wrap">
+                  <p class="text-muted mb-0" style="font-size:0.85rem;">No receipt uploaded.</p>
+                </div>
+              </div>
+              <div class="ct-card p-3" id="rm_receipt2_card" style="display:none!important;">
+                <div class="fw-bold mb-2" style="color:var(--ct-purple-dark);">Payment Receipt #2</div>
+                <div id="rm_receipt2_wrap">
+                  <p class="text-muted mb-0" style="font-size:0.85rem;">No receipt uploaded yet.</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer: always-available danger zone + close -->
+      <div class="modal-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-sm btn-outline-warning" id="btn_disable" onclick="toggleDisable()">
+            <i class="bi bi-eye-slash me-1"></i><span id="btn_disable_label">Disable</span>
+          </button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteReservation()">
+            <i class="bi bi-trash me-1"></i>Delete Permanently
+          </button>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
     </div>
   </div>
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var CSRF = "{{ csrf_token }}";
+var currentAppId = null;
+var currentIsDisabled = false;
+
+function openReviewModal(pk) {
+  currentAppId = pk;
+  document.getElementById('rm_app_id').textContent = '#' + pk;
+  document.getElementById('rmLoading').classList.remove('d-none');
+  document.getElementById('rmContent').classList.add('d-none');
+  document.getElementById('rmError').classList.add('d-none');
+  new bootstrap.Modal(document.getElementById('reviewModal')).show();
+
+  fetch('/organizer/reservations/' + pk + '/detail/json/', {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    populateModal(d);
+    document.getElementById('rmLoading').classList.add('d-none');
+    document.getElementById('rmContent').classList.remove('d-none');
+  })
+  .catch(function() {
+    document.getElementById('rmLoading').classList.add('d-none');
+    document.getElementById('rmError').textContent = 'Failed to load reservation details.';
+    document.getElementById('rmError').classList.remove('d-none');
+  });
+}
+
+function populateModal(d) {
+  currentIsDisabled = d.is_disabled || false;
+
+  document.getElementById('rm_merchant_name').textContent     = d.merchant_name || '—';
+  document.getElementById('rm_merchant_phone').textContent    = d.merchant_phone  ? '📞 ' + d.merchant_phone  : '';
+  document.getElementById('rm_merchant_email').textContent    = d.merchant_email  ? '✉ '  + d.merchant_email  : '';
+  document.getElementById('rm_merchant_facebook').textContent = d.merchant_facebook ? '🔗 ' + d.merchant_facebook : '';
+  document.getElementById('rm_event').textContent     = d.event_title;
+  document.getElementById('rm_booth').textContent     = d.booth_label;
+  document.getElementById('rm_price').textContent     = parseFloat(d.booth_price).toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('rm_pay_option').textContent = d.payment_option_chosen === 'half' ? '50/50' : 'Full';
+  document.getElementById('rm_pay_status').textContent = (d.payment_status || 'unpaid').replace('_',' ');
+  document.getElementById('rm_first_amt').textContent  = parseFloat(d.first_payment_amount || 0).toLocaleString('en-PH', {minimumFractionDigits:2});
+  document.getElementById('rm_applied_at').textContent = d.applied_at;
+  document.getElementById('rm_admin_notes').value = d.admin_notes || '';
+
+  // Pre-select current status in dropdown
+  document.getElementById('rm_new_status').value = d.status;
+
+  var secondRow = document.getElementById('rm_second_pay_row');
+  if (d.payment_option_chosen === 'half') {
+    secondRow.classList.remove('d-none');
+    document.getElementById('rm_second_amt').textContent = parseFloat(d.second_payment_amount || 0).toLocaleString('en-PH', {minimumFractionDigits:2});
+    document.getElementById('rm_deadline').textContent = d.second_payment_deadline || '—';
+  } else {
+    secondRow.classList.add('d-none');
+  }
+
+  var confirmedRow = document.getElementById('rm_confirmed_row');
+  if (d.confirmed_at) {
+    confirmedRow.classList.remove('d-none');
+    document.getElementById('rm_confirmed_at').textContent = d.confirmed_at;
+  } else {
+    confirmedRow.classList.add('d-none');
+  }
+
+  // Receipt 1
+  var r1 = document.getElementById('rm_receipt1_wrap');
+  r1.innerHTML = d.receipt_image_1_url
+    ? '<a href="' + d.receipt_image_1_url + '" target="_blank"><img src="' + d.receipt_image_1_url + '" alt="Receipt 1" style="max-width:100%;border-radius:6px;border:1px solid #dee2e6;"></a><div class="mt-1"><a href="' + d.receipt_image_1_url + '" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-box-arrow-up-right me-1"></i>View Full</a></div>'
+    : '<p class="text-muted mb-0" style="font-size:0.85rem;">No receipt uploaded.</p>';
+
+  // Receipt 2
+  var r2card = document.getElementById('rm_receipt2_card');
+  var r2wrap = document.getElementById('rm_receipt2_wrap');
+  if (d.payment_option_chosen === 'half') {
+    r2card.style.removeProperty('display');
+    r2wrap.innerHTML = d.receipt_image_2_url
+      ? '<a href="' + d.receipt_image_2_url + '" target="_blank"><img src="' + d.receipt_image_2_url + '" alt="Receipt 2" style="max-width:100%;border-radius:6px;border:1px solid #dee2e6;"></a><div class="mt-1"><a href="' + d.receipt_image_2_url + '" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-box-arrow-up-right me-1"></i>View Full</a></div>'
+      : '<p class="text-muted mb-0" style="font-size:0.85rem;">No receipt uploaded yet.</p>';
+  } else {
+    r2card.style.setProperty('display', 'none', 'important');
+  }
+
+  // Second payment section
+  var secSection = document.getElementById('rm_second_payment_section');
+  if (d.status === 'APPROVED' && d.payment_option_chosen === 'half') {
+    secSection.classList.remove('d-none');
+    document.getElementById('rm_receipt2_status').textContent = d.receipt_image_2_url
+      ? 'Receipt received — ready to approve.'
+      : 'Waiting for merchant to upload second receipt.';
+    document.getElementById('btn_approve_second').disabled = !d.receipt_image_2_url;
+    if (d.second_payment_deadline) document.getElementById('rm_new_deadline').value = d.second_payment_deadline;
+  } else {
+    secSection.classList.add('d-none');
+  }
+
+  // Quick action buttons — always visible, greyed when already in that state
+  document.getElementById('btn_approve').disabled  = (d.status === 'APPROVED');
+  document.getElementById('btn_deny').disabled     = (d.status === 'DENIED');
+  document.getElementById('btn_resubmit').disabled = (d.status === 'CANCELLED' || d.status === 'COMPLETED');
+
+  // Disable toggle label
+  document.getElementById('btn_disable_label').textContent = d.is_disabled ? 'Re-enable' : 'Disable';
+  document.getElementById('btn_disable').className = d.is_disabled
+    ? 'btn btn-sm btn-warning'
+    : 'btn btn-sm btn-outline-warning';
+}
+
+// ── Quick actions ─────────────────────────────────────────────────────────
+function ajaxPost(url, fd, onSuccess) {
+  fetch(url, {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': CSRF },
+    body: fd,
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      if (onSuccess) onSuccess(d);
+    } else {
+      document.getElementById('rmError').textContent = d.error || 'Action failed.';
+      document.getElementById('rmError').classList.remove('d-none');
+    }
+  })
+  .catch(function() {
+    document.getElementById('rmError').textContent = 'Network error.';
+    document.getElementById('rmError').classList.remove('d-none');
+  });
+}
+
+function getNotesFormData() {
+  var fd = new FormData();
+  fd.append('admin_notes', document.getElementById('rm_admin_notes').value);
+  return fd;
+}
+
+function approveReservation() {
+  ajaxPost('/organizer/reservations/' + currentAppId + '/approve/', getNotesFormData(), function(d) {
+    closeAndUpdate(currentAppId, 'APPROVED', 'Approved');
+    showToast('Reservation approved!', 'success');
+  });
+}
+
+function denyReservation() {
+  if (!confirm('Deny this reservation? The merchant will be notified.')) return;
+  ajaxPost('/organizer/reservations/' + currentAppId + '/deny/', getNotesFormData(), function(d) {
+    closeAndUpdate(currentAppId, 'DENIED', 'Denied');
+    showToast('Reservation denied.', 'warning');
+  });
+}
+
+function requestResubmit() {
+  ajaxPost('/organizer/reservations/' + currentAppId + '/resubmit/', getNotesFormData(), function() {
+    closeModal();
+    showToast('Resubmission request sent.', 'info');
+  });
+}
+
+function changeStatus() {
+  var newStatus = document.getElementById('rm_new_status').value;
+  var fd = getNotesFormData();
+  fd.append('new_status', newStatus);
+  ajaxPost('/organizer/reservations/' + currentAppId + '/change-status/', fd, function(d) {
+    closeAndUpdate(currentAppId, d.new_status, d.new_status_label);
+    showToast('Status changed to ' + d.new_status_label + '.', 'success');
+  });
+}
+
+function approveSecondPayment() {
+  if (!confirm('Confirm second payment and complete this reservation?')) return;
+  ajaxPost('/organizer/reservations/' + currentAppId + '/approve-second/', new FormData(), function(d) {
+    closeAndUpdate(currentAppId, 'COMPLETED', 'Completed');
+    showToast('Second payment approved! Reservation completed.', 'success');
+  });
+}
+
+function extendDeadline() {
+  var newDate = document.getElementById('rm_new_deadline').value;
+  if (!newDate) { alert('Please select a new deadline date.'); return; }
+  var fd = new FormData();
+  fd.append('new_deadline', newDate);
+  ajaxPost('/organizer/reservations/' + currentAppId + '/extend-deadline/', fd, function(d) {
+    showToast('Deadline extended to ' + d.new_deadline, 'success');
+  });
+}
+
+function toggleDisable() {
+  var action = currentIsDisabled ? 're-enable' : 'disable';
+  if (!confirm('Are you sure you want to ' + action + ' this reservation?')) return;
+  ajaxPost('/organizer/reservations/' + currentAppId + '/disable/', new FormData(), function(d) {
+    currentIsDisabled = d.is_disabled;
+    document.getElementById('btn_disable_label').textContent = d.is_disabled ? 'Re-enable' : 'Disable';
+    document.getElementById('btn_disable').className = d.is_disabled ? 'btn btn-sm btn-warning' : 'btn btn-sm btn-outline-warning';
+    var row = document.getElementById('res-row-' + currentAppId);
+    if (row) row.style.opacity = d.is_disabled ? '0.5' : '1';
+    showToast(d.is_disabled ? 'Reservation disabled. Booth freed.' : 'Reservation re-enabled.', 'info');
+  });
+}
+
+function deleteReservation() {
+  if (!confirm('Permanently delete this reservation? This cannot be undone. The booth will return to Available.')) return;
+  ajaxPost('/organizer/reservations/' + currentAppId + '/delete/', new FormData(), function() {
+    closeModal();
+    var row = document.getElementById('res-row-' + currentAppId);
+    if (row) row.remove();
+    showToast('Reservation permanently deleted.', 'danger');
+  });
+}
+
+function closeModal() {
+  var m = bootstrap.Modal.getInstance(document.getElementById('reviewModal'));
+  if (m) m.hide();
+}
+
+function closeAndUpdate(pk, status, label) {
+  closeModal();
+  updateBadge(pk, status, label);
+}
+
+function updateBadge(pk, status, label) {
+  var badge = document.getElementById('badge-' + pk);
+  if (!badge) return;
+  badge.textContent = label;
+  var colorMap = {
+    'APPROVED': '#22c55e', 'DENIED': '#ef4444', 'REJECTED': '#ef4444',
+    'COMPLETED': '#0ea5e9', 'PENDING': '#f59e0b', 'CANCELLED': '#9ca3af'
+  };
+  badge.style.background = colorMap[status] || '#9ca3af';
+  badge.style.color      = (status === 'PENDING') ? '#1a1a1a' : 'white';
+}
+</script>
 {% endblock %}
